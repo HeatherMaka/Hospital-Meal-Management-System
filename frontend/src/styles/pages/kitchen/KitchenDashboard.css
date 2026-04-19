@@ -1,0 +1,111 @@
+.kitchen-dashboard {
+    padding: 1.5rem 2rem;
+}
+
+.dashboard-header {
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-header h1 {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.35rem;
+}
+
+.date-display {
+    color: #6B7280;
+    font-size: 0.95rem;
+}
+
+/* Forces exactly one row */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* Change '4' to match your actual card count */
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1rem; /* Reduced from 1.5rem */
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    min-width: 0; /* Prevents overflow in tight grids */
+}
+
+.stat-icon {
+    width: 42px; /* Reduced from 60px */
+    height: 42px;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem; /* Reduced from 1.75rem */
+    flex-shrink: 0;
+}
+
+/* Color variants remain identical, just scaled down visually via .stat-icon */
+.stat-yellow .stat-icon { background: #FEF3C7; color: #92400E; }
+.stat-blue .stat-icon   { background: #DBEAFE; color: #1E40AF; }
+.stat-green .stat-icon  { background: #D1FAE5; color: #065F46; }
+.stat-red .stat-icon    { background: #FEE2E2; color: #991B1B; }
+
+.stat-info h3 {
+    font-size: 1.25rem; /* Reduced from 2rem */
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.1rem 0;
+    line-height: 1.2;
+    white-space: nowrap; /* Prevents awkward wrapping */
+}
+
+.stat-info p {
+    color: #6B7280;
+    font-size: 0.78rem; /* Reduced from 0.95rem */
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Quick Actions Section (unchanged but kept for context) */
+.quick-actions {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.quick-actions h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 1.25rem;
+}
+
+.action-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.action-btn {
+    padding: 0.85rem 1rem;
+    background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+}

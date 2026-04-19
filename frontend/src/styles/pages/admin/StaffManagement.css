@@ -1,0 +1,786 @@
+/* src/styles/pages/admin/StaffManagement.css */
+
+/* ============ Base Layout ============ */
+.staff-management {
+    padding: 1.5rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ============ Notification Toast ============ */
+.notification-toast {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    z-index: 2000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideInRight 0.3s ease-out;
+    max-width: 420px;
+    border-left: 4px solid;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.notification-toast.success {
+    background: #f0fdf4;
+    color: #166534;
+    border-left-color: #22c55e;
+}
+
+.notification-toast.error {
+    background: #fef2f2;
+    color: #991b1b;
+    border-left-color: #ef4444;
+}
+
+.notification-toast.info {
+    background: #eff6ff;
+    color: #1e40af;
+    border-left-color: #3b82f6;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: auto;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.notification-close:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* ============ Page Header ============ */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.page-header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.page-subtitle {
+    color: #6b7280;
+    font-size: 0.95rem;
+    margin: 0.25rem 0 0 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* ============ Buttons ============ */
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+    border: none;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4338ca, #4f46e5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-refresh {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.625rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.2s;
+    width: 40px;
+    height: 40px;
+}
+
+.btn-refresh:hover:not(:disabled) {
+    background: #f9fafb;
+    color: #111827;
+    border-color: #d1d5db;
+    transform: translateY(-1px);
+}
+
+.btn-refresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-refresh svg.spinning {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============ Registration/Edit Card ============ */
+.registration-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.registration-card h2 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #111827;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+/* ============ Form Styles ============ */
+.staff-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.form-group label svg {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+.form-group input,
+.form-group select {
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: white;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.form-group input:disabled {
+    background: #f9fafb;
+    cursor: not-allowed;
+    color: #6b7280;
+}
+
+.form-group input::placeholder {
+    color: #9ca3af;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.125rem;
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* ============ Staff List Section ============ */
+.staff-list-section {
+    margin-top: 1rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.section-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+/* ============ Loading & Empty States ============ */
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #6b7280;
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+}
+
+.spinner-large {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e5e7eb;
+    border-top-color: #4f46e5;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: #d1d5db;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+}
+
+.empty-state h3 {
+    color: #111827;
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem 0;
+}
+
+.empty-state p {
+    margin: 0 0 1.5rem 0;
+    font-size: 0.95rem;
+}
+
+/* ============ Table Styles ============ */
+.staff-table-container {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.staff-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.staff-table th {
+    background: #f9fafb;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.staff-table td {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f3f4f6;
+    color: #374151;
+    vertical-align: middle;
+}
+
+.staff-table tr:last-child td {
+    border-bottom: none;
+}
+
+.staff-table tr:hover {
+    background: #f9fafb;
+}
+
+.staff-table tr.inactive-row {
+    opacity: 0.7;
+    background: #fef2f2;
+}
+
+.staff-table tr.inactive-row:hover {
+    background: #fee2e2;
+}
+
+/* ============ Staff Cell ============ */
+.staff-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+}
+
+.staff-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.staff-name {
+    font-weight: 500;
+    color: #111827;
+}
+
+/* ============ Badges ============ */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+}
+
+.badge-staff {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-kitchen {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.badge-nutritionist {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.badge-admin {
+    background: #ede9fe;
+    color: #5b21b6;
+}
+
+.badge-default {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.badge-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.badge-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ============ Action Buttons ============ */
+.action-buttons {
+    display: flex;
+    gap: 0.375rem;
+    justify-content: flex-start;
+}
+
+.btn-icon {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 1rem;
+}
+
+.btn-icon:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+    transform: translateY(-1px);
+}
+
+.btn-icon:active {
+    transform: translateY(0);
+}
+
+.btn-edit:hover {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.btn-password:hover {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.btn-deactivate:hover {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.btn-reactivate:hover {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* ============ Responsive Design ============ */
+@media (max-width: 1024px) {
+    .staff-management {
+        padding: 1rem 1.5rem;
+    }
+
+    .form-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .staff-management {
+        padding: 1rem;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+
+    .form-actions .btn-primary,
+    .form-actions .btn-secondary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .staff-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .staff-table {
+        min-width: 700px;
+    }
+
+    .staff-table th,
+    .staff-table td {
+        padding: 0.875rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .action-buttons {
+        gap: 0.25rem;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    .notification-toast {
+        left: 1rem;
+        right: 1rem;
+        max-width: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .page-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .registration-card {
+        padding: 1.25rem;
+    }
+
+    .registration-card h2 {
+        font-size: 1.125rem;
+    }
+
+    .staff-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 0.875rem;
+    }
+
+    .badge {
+        padding: 0.2rem 0.6rem;
+        font-size: 0.7rem;
+    }
+}
+
+/* ============ Accessibility ============ */
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-refresh:focus-visible,
+.btn-icon:focus-visible,
+.notification-close:focus-visible,
+.form-group input:focus-visible,
+.form-group select:focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 2px;
+}
+
+/* ============ Scrollbar Styling ============ */
+.staff-table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.staff-table-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+}
+
+.staff-table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.staff-table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+
+
+/* Add to your existing CSS file */
+
+/* Field error states */
+.form-group.has-error input,
+.form-group.has-error select {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.form-group.has-error input:focus,
+.form-group.has-error select:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.input-error {
+    border-color: #dc3545 !important;
+}
+
+.error-message {
+    display: block;
+    color: #dc3545;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.form-hint {
+    display: block;
+    color: #6c757d;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Phone input pattern hint */
+input[type="tel"]::placeholder {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* ============ Print Styles ============ */
+@media print {
+    .btn-primary,
+    .btn-secondary,
+    .btn-refresh,
+    .btn-icon,
+    .notification-toast,
+    .header-actions,
+    .form-actions {
+        display: none !important;
+    }
+
+    .registration-card,
+    .staff-table-container {
+        box-shadow: none;
+        border: 1px solid #000;
+        break-inside: avoid;
+    }
+
+    .staff-table {
+        font-size: 0.85rem;
+    }
+
+    .staff-table th,
+    .staff-table td {
+        padding: 0.5rem;
+    }
+
+    .badge {
+        border: 1px solid currentColor;
+        background: none !important;
+        color: #000 !important;
+    }
+}
+
+/* ============ Animation Utilities ============ */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* ============ Utility Classes ============ */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 200px;
+}
+
+@media (max-width: 768px) {
+    .text-truncate {
+        max-width: 120px;
+    }
+}

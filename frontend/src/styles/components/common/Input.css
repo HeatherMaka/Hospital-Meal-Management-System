@@ -1,0 +1,81 @@
+.input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.input-label {
+    font-weight: 500;
+    color: var(--color-black);
+    font-size: 0.95rem;
+}
+
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-field {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #E5E7EB;
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all var(--transition-fast);
+    background: var(--color-white);
+    color: var(--color-black);
+}
+
+.input-field:focus {
+    border-color: var(--color-light-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
+.input-field.input-error {
+    border-color: var(--color-red);
+}
+
+.input-field.input-error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+.input-field.has-left-icon {
+    padding-left: 2.75rem;
+}
+
+.input-field.has-right-icon {
+    padding-right: 2.75rem;
+}
+
+.input-icon-left,
+.input-icon-right {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9CA3AF;
+    pointer-events: none;
+}
+
+.input-icon-left {
+    left: 1rem;
+}
+
+.input-icon-right {
+    right: 1rem;
+}
+
+.input-icon-left svg,
+.input-icon-right svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.input-error-message {
+    color: var(--color-red);
+    font-size: 0.85rem;
+    font-weight: 500;
+}

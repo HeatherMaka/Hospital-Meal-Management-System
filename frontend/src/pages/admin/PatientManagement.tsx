@@ -440,7 +440,7 @@ export default function PatientManagement() {
                                         onChange={handleInputChange}
                                         required
                                         disabled={isSubmitting}
-                                        pattern="^\d{8,16}$"  //  Optional: match backend validation
+                                        pattern="^[0-9]{2}-[0-9]{6,7}[A-Z][0-9]{2}$"  //  Optional: match backend validation
                                         title="Enter 8-16 digit National ID"
                                     />
                                 </div>

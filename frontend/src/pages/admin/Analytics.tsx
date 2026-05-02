@@ -165,9 +165,13 @@ export default function Analytics() {
             }
         })
         setMealTypeData([
+            { name: 'Cereal', orders: mealTypes['CEREAL'] || 0 },
             { name: 'Breakfast', orders: mealTypes['BREAKFAST'] || 0 },
             { name: 'Lunch', orders: mealTypes['LUNCH'] || 0 },
-            { name: 'Supper', orders: mealTypes['SUPPER'] || 0 },
+            { name: 'Lunch_Dessert', orders: mealTypes['LUNCH_DESSERT'] || 0 },
+            { name: 'Three_pm_teas', orders: mealTypes['THREE_PM_TEAS'] || 0 },
+            { name: 'Dinner', orders: mealTypes['DINNER'] || 0 },
+            { name: 'Dinner_Dessert', orders: mealTypes['DINNER_DESSERT'] || 0 },
         ])
 
         // === Parse Status Data from status fields ===

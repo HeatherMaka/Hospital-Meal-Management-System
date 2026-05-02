@@ -446,7 +446,7 @@ export default function StaffManagement() {
                                     name="fullName"
                                     value={formData.fullName}
                                     onChange={handleInputChange}
-                                    placeholder="John Doe"
+                                    placeholder=""
                                     required
                                     className={fieldErrors.fullName ? 'input-error' : ''}
                                 />

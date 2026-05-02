@@ -6,14 +6,15 @@ import {
 } from 'react-icons/fi'
 import '../../styles/pages/kitchen/MenuManagement.css'
 
-// ============ TypeScript Interfaces (Match Backend DTOs) ============
+//  Updated to use 7 meal types
+type MealType = 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
 
 // Backend MealDTO
 export interface Meal {
     id: number
     name: string
     description: string
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: MealType
     compatibleDiets: string[]  //  Backend field name (not dietaryTypes)
     isActive: boolean
     mealDate?: string          // ISO date "YYYY-MM-DD"
@@ -25,14 +26,14 @@ export interface Meal {
 // Backend DailyMenuDTO: { date, mealType, items[] }
 export interface DailyMenuDTO {
     date: string              // ISO date "YYYY-MM-DD"
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: MealType
     items: Meal[]             // Array of meals for this type
 }
 
 // Request to add meals to daily menu (matches backend DailyMenuRequest)
 export interface DailyMenuRequest {
     menuDate: string          // ISO date
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: MealType
     meals: MealItemRequest[]
 }
 
@@ -46,7 +47,7 @@ export interface MealItemRequest {
 export interface MealFormData {
     name: string
     description: string
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: MealType
     compatibleDiets: string[]  //  Match backend field name
     orderDeadline?: string
 }
@@ -64,7 +65,7 @@ export default function MenuManagement() {
     const [meals, setMeals] = useState<Meal[]>([])
     const [dailyMenus, setDailyMenus] = useState<DailyMenuDTO[]>([])  //  Match backend structure
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-    const [selectedMealType, setSelectedMealType] = useState<'BREAKFAST' | 'LUNCH' | 'SUPPER'>('LUNCH')
+    const [selectedMealType, setSelectedMealType] = useState<'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'>('LUNCH')
     const [showMealModal, setShowMealModal] = useState(false)
     const [showMenuModal, setShowMenuModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>(null)
@@ -80,7 +81,6 @@ export default function MenuManagement() {
         compatibleDiets: [],
         orderDeadline: '',
     })
-    const [editingMealId, setEditingMealId] = useState<number | null>(null)
 
     // Show notification toast
     const showNotification = (message: string, type: NotificationType) => {
@@ -241,11 +241,12 @@ export default function MenuManagement() {
                 meals: [{
                     name: meal.name,
                     description: meal.description,
-                    compatibleDiets: meal.compatibleDiets,
+                    compatibleDiets: meal.compatibleDiets || [],
                     orderDeadline: meal.orderDeadline,
                 }]
             }
 
+            console.log('Adding to menu:', payload)
             await api.post<DailyMenuDTO>('/staff/menu', payload)
             showNotification(`${meal.name} added to ${selectedMealType} menu`, 'success')
             await fetchDailyMenu(selectedDate)
@@ -253,7 +254,7 @@ export default function MenuManagement() {
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to add meal to menu'
             showNotification(errorMessage, 'error')
-            console.error('Error adding to daily menu:', err)
+            console.error('Error adding to daily menu:', err.response?.data || err)
         }
     }
 
@@ -394,14 +395,21 @@ export default function MenuManagement() {
 
             {/* Meal Type Tabs */}
             <div className="meal-type-tabs">
-                {(['BREAKFAST', 'LUNCH', 'SUPPER'] as const).map(type => (
+                {(['CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT', 'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'] as const).map(type => (
                     <button
                         key={type}
                         className={`tab-btn ${selectedMealType === type ? 'active' : ''}`}
                         onClick={() => setSelectedMealType(type)}
                         type="button"
                     >
-                        {type.charAt(0) + type.slice(1).toLowerCase()}
+                        {type === 'CEREAL' ? 'Cereal' :
+                         type === 'BREAKFAST' ? 'Breakfast' :
+                         type === 'LUNCH' ? 'Lunch' :
+                         type === 'LUNCH_DESSERT' ? 'Lunch_Dessert' :
+                         type === 'THREE_PM_TEAS' ? 'Three_pm_teas' :
+                         type === 'DINNER' ? 'Dinner' :
+                         type === 'DINNER_DESSERT' ? 'Dinner_Dessert' :
+                         type.charAt(0) + type.slice(1).toLowerCase()}
                     </button>
                 ))}
             </div>
@@ -595,9 +603,13 @@ export default function MenuManagement() {
                                         required
                                         disabled={isSubmitting}
                                     >
+                                        <option value="CEREAL">Cereal</option>
                                         <option value="BREAKFAST">Breakfast</option>
                                         <option value="LUNCH">Lunch</option>
-                                        <option value="SUPPER">Supper</option>
+                                        <option value="LUNCH_DESSERT">Lunch Dessert</option>
+                                        <option value="THREE_PM_TEAS">3PM Teas</option>
+                                        <option value="DINNER">Dinner</option>
+                                        <option value="DINNER_DESSERT">Dinner Dessert</option>
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -682,9 +694,13 @@ export default function MenuManagement() {
                                 onChange={(e) => setSelectedMealType(e.target.value as any)}
                                 disabled={isSubmitting}
                             >
+                                <option value="CEREAL">Cereal</option>
                                 <option value="BREAKFAST">Breakfast</option>
                                 <option value="LUNCH">Lunch</option>
-                                <option value="SUPPER">Supper</option>
+                                <option value="LUNCH_DESSERT">Lunch Dessert</option>
+                                <option value="THREE_PM_TEAS">3PM Teas</option>
+                                <option value="DINNER">Dinner</option>
+                                <option value="DINNER_DESSERT">Dinner Dessert</option>
                             </select>
                         </div>
 

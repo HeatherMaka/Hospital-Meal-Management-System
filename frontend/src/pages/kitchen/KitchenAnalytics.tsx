@@ -179,9 +179,13 @@ export default function KitchenAnalytics() {
             }
         })
         setMealTypeData([
+            { name: 'Cereal', count: mealTypes['CEREAL'] || 0 },
             { name: 'Breakfast', count: mealTypes['BREAKFAST'] || 0 },
             { name: 'Lunch', count: mealTypes['LUNCH'] || 0 },
-            { name: 'Supper', count: mealTypes['SUPPER'] || 0 },
+            { name: 'Lunch_Dessert', count: mealTypes['LUNCH_DESSERT'] || 0 },
+            { name: 'Three_pm_teas', count: mealTypes['THREE_PM_TEAS'] || 0 },
+            { name: 'Dinner', count: mealTypes['DINNER'] || 0 },
+            { name: 'Dinner_Dessert', count: mealTypes['DINNER_DESSERT'] || 0 },
         ])
 
         // === Parse Status Data from status fields ===

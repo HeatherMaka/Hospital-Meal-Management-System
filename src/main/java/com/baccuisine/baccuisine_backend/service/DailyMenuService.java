@@ -55,9 +55,9 @@ public class DailyMenuService {
                     .isActive(true)
                     .createdById(request.getCreatedById())
                     .createdByRole(Role.KITCHEN_STAFF)
+                    .dailyMenu(dailyMenu)
                     .build();
             addedMeals.add(mealRepository.save(meal));
-            dailyMenu.addMeal(meal);
         }
 
         dailyMenuRepository.save(dailyMenu);

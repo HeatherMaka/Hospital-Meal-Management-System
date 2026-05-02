@@ -13,7 +13,7 @@ import '../../styles/pages/patient/PatientMenu.css'
 // Backend DailyMenuDTO: { date: string, mealType: string, items: MealDTO[] }
 export interface DailyMenu {
     date: string              // ISO date "YYYY-MM-DD"
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
     items: DailyMenuItem[]
 }
 
@@ -21,7 +21,7 @@ export interface DailyMenuItem {
     id: number                // This is the DailyMenu ID (for ordering)
     mealName: string          // Backend sends 'name', we map to 'mealName'
     description: string
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
     dietaryTypes: string[]    // Backend: compatibleDiets (enum array)
     isOrderable: boolean      // Derived from isActive + orderDeadline
     orderDeadline?: string    // ISO time "HH:mm:ss"
@@ -42,7 +42,7 @@ export interface OrderDTO {
     bedNumber: string
     mealId: number
     mealName: string
-    mealType: 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
     orderDate: string         // ISO date
     quantity: number
     specialRequest?: string
@@ -216,9 +216,13 @@ export default function PatientMenu() {
     // Get meal type icon
     const getMealTypeIcon = (mealType: string) => {
         switch (mealType) {
+            case 'CEREAL': return '🥣'
             case 'BREAKFAST': return '🌅'
             case 'LUNCH': return '☀️'
-            case 'SUPPER': return '🌙'
+            case 'LUNCH_DESSERT': return '🍰'
+            case 'THREE_PM_TEAS': return '🫖'
+            case 'DINNER': return '🌙'
+            case 'DINNER_DESSERT': return '🍨'
             default: return '🍽️'
         }
     }
@@ -338,7 +342,7 @@ export default function PatientMenu() {
                             <p>Kitchen staff haven't added meals for {formatDate(selectedDate)} yet. Check back later!</p>
                         </div>
                     ) : (
-                        ['BREAKFAST', 'LUNCH', 'SUPPER'].map((mealType) => {
+                        ['CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT', 'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'].map((mealType) => {
                             const meals = menuItems.filter(m => m.mealType === mealType)
                             if (meals.length === 0) return null
 
@@ -347,7 +351,7 @@ export default function PatientMenu() {
                                     <div className="meal-type-header">
                                         <h2>
                                             <span className="meal-type-icon">{getMealTypeIcon(mealType)}</span>
-                                            {mealType.charAt(0) + mealType.slice(1).toLowerCase()}
+                                            {mealType.charAt(0) + mealType.slice(1).toLowerCase().replace('dessert', ' Dessert').replace('threepmteas', '3PM Teas').replace('cereal', 'Cereal')}
                                         </h2>
                                         {meals.every(m => !m.isOrderable) && (
                                             <span className="ordering-closed">Ordering Closed</span>

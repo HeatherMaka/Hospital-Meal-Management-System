@@ -71,8 +71,8 @@ public class SecurityConfig {
                         // Admin only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // Staff only (approved)
-                        .requestMatchers("/api/staff/**").hasRole("STAFF")
+                        // Staff only (approved) - ADMIN can also access
+                        .requestMatchers("/api/staff/**").hasAnyRole("STAFF", "ADMIN")
 
                         // Patient endpoints - require PATIENT role
                         // Ensure token role matches: "PATIENT" → Spring adds "ROLE_" prefix → "ROLE_PATIENT"

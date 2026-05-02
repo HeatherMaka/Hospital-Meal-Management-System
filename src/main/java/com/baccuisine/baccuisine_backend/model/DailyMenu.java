@@ -1,4 +1,3 @@
-// src/main/java/com/baccuisine/baccuisine_backend/model/DailyMenu.java
 package com.baccuisine.baccuisine_backend.model;
 
 import com.baccuisine.baccuisine_backend.enums.MealType;
@@ -34,8 +33,6 @@ public class DailyMenu {
     @Column(nullable = false)
     private boolean isActive = true;
 
-    //  Changed to @ManyToOne to match repository queries (dm.meal)
-    // Previously was @ManyToMany Set<Meal> meals, which caused JPQL mismatches
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "meal_id", nullable = false)
     private Meal meal;
@@ -48,12 +45,4 @@ public class DailyMenu {
 
     @LastModifiedDate
     private LocalDateTime updatedAt;
-
-    //  Optional helper to auto-set mealType when assigning a meal
-    public void setMealAndType(Meal meal) {
-
-    }
-
-    public void addMeal(Meal meal) {
-    }
 }

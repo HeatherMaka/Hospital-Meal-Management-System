@@ -46,6 +46,10 @@ public class Meal {
 
     private LocalTime orderDeadline;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "daily_menu_id")
+    private DailyMenu dailyMenu;
+
     @ElementCollection(targetClass = DietaryType.class)
     @CollectionTable(
             name = "meal_compatible_diets",

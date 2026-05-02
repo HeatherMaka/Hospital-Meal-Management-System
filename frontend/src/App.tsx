@@ -165,9 +165,9 @@ function AppRoutes() {
                 <Route path="analytics" element={<Analytics />} />
             </Route>
 
-            {/*  Kitchen Staff Routes - Accept both STAFF and KITCHEN_STAFF roles */}
+            {/*  Kitchen Staff Routes - Accept STAFF, KITCHEN_STAFF, and ADMIN roles */}
             <Route path="/kitchen" element={
-                <ProtectedRoute allowedRoles={['STAFF', 'KITCHEN_STAFF']}> {/*  Fixed: Include KITCHEN_STAFF */}
+                <ProtectedRoute allowedRoles={['STAFF', 'KITCHEN_STAFF', 'ADMIN']}> {/*  Added ADMIN */}
                     <KitchenLayout />
                 </ProtectedRoute>
             }>

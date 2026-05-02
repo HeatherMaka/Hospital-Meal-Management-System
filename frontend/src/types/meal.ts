@@ -1,4 +1,4 @@
-export type MealType = 'BREAKFAST' | 'LUNCH' | 'SUPPER'
+export type MealType = 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
 
 export type DietaryType =
     | 'NORMAL'

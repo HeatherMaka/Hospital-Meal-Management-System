@@ -11,9 +11,13 @@ import java.time.LocalDateTime;
 public class TimeValidator {
 
     // Serving times configuration
+    private static final LocalTime CEREAL_TIME = LocalTime.of(7, 0);
     private static final LocalTime BREAKFAST_TIME = LocalTime.of(8, 0);
     private static final LocalTime LUNCH_TIME = LocalTime.of(13, 0);
-    private static final LocalTime SUPPER_TIME = LocalTime.of(19, 0);
+    private static final LocalTime LUNCH_DESSERT_TIME = LocalTime.of(14, 0);
+    private static final LocalTime THREE_PM_TEAS_TIME = LocalTime.of(15, 0);
+    private static final LocalTime DINNER_TIME = LocalTime.of(19, 0);
+    private static final LocalTime DINNER_DESSERT_TIME = LocalTime.of(20, 0);
     private static final int CUTOFF_HOURS = 1; // 1 hour before serving
 
     /**
@@ -42,9 +46,13 @@ public class TimeValidator {
      */
     public LocalDateTime getServingTime(LocalDate date, MealType mealType) {
         LocalTime time = switch (mealType) {
+            case CEREAL -> CEREAL_TIME;
             case BREAKFAST -> BREAKFAST_TIME;
             case LUNCH -> LUNCH_TIME;
-            case SUPPER -> SUPPER_TIME;
+            case LUNCH_DESSERT -> LUNCH_DESSERT_TIME;
+            case THREE_PM_TEAS -> THREE_PM_TEAS_TIME;
+            case DINNER -> DINNER_TIME;
+            case DINNER_DESSERT -> DINNER_DESSERT_TIME;
         };
         return LocalDateTime.of(date, time);
     }

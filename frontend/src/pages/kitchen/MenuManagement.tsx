@@ -64,7 +64,7 @@ interface Notification {
 export default function MenuManagement() {
     const [meals, setMeals] = useState<Meal[]>([])
     const [dailyMenus, setDailyMenus] = useState<DailyMenuDTO[]>([])  //  Match backend structure
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+    const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])
     const [selectedMealType, setSelectedMealType] = useState<'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'>('LUNCH')
     const [showMealModal, setShowMealModal] = useState(false)
     const [showMenuModal, setShowMenuModal] = useState(false)
@@ -322,7 +322,8 @@ export default function MenuManagement() {
 
     // Format date for display
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+        const localDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+        return new Date(localDateString).toLocaleDateString('en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         })
     }
@@ -388,7 +389,7 @@ export default function MenuManagement() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
                 />
                 <span className="date-display">{formatDate(selectedDate)}</span>
             </div>

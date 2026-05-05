@@ -11,6 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -35,9 +39,19 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF')")
     public ResponseEntity<?> getCurrentUser() {
         // Implement user details endpoint
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> healthCheck() {
+        Map<String, Object> health = new HashMap<>();
+        health.put("status", "UP");
+        health.put("timestamp", LocalDateTime.now());
+        health.put("service", "Bac Cuisine Backend");
+        health.put("version", "1.0.0");
+        return ResponseEntity.ok(health);
     }
 }

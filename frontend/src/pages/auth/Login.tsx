@@ -67,7 +67,27 @@ export default function Login() {
                 await patientLogin(formData.wardNumber, formData.bedNumber, formData.nin)
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.')
+            console.error('Login error details:', err)
+            console.error('Response data:', err.response?.data)
+            console.error('Response status:', err.response?.status)
+            console.error('Response headers:', err.response?.headers)
+
+            // Show more specific error message
+            let errorMessage = 'Login failed. Please try again.'
+
+            if (err.response?.status === 401) {
+                errorMessage = 'Invalid username or password'
+            } else if (err.response?.status === 403) {
+                errorMessage = 'Account is disabled or access denied'
+            } else if (err.response?.status === 400) {
+                errorMessage = err.response?.data?.message || 'Invalid request data'
+            } else if (err.response?.status >= 500) {
+                errorMessage = 'Server error. Please try again later.'
+            } else if (!err.response) {
+                errorMessage = 'Cannot connect to server. Please check if backend is running.'
+            }
+
+            setError(errorMessage)
         } finally {
             setIsSubmitting(false)
         }

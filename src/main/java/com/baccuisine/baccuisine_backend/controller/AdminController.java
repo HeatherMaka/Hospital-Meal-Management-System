@@ -61,6 +61,12 @@ public class AdminController {
         return ResponseEntity.ok(patientService.dischargePatient(id));
     }
 
+    @DeleteMapping("/patients/{id}")
+    public ResponseEntity<?> deletePatient(@PathVariable Long id) {
+        patientService.deletePatient(id);
+        return ResponseEntity.ok().body(java.util.Map.of("message", "Patient permanently deleted"));
+    }
+
     // ============ Staff Management ============
 
     @PostMapping("/staff/register")

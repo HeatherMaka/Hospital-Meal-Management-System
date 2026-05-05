@@ -1,7 +1,7 @@
 // src/pages/admin/PatientManagement.tsx
 import { useState, useEffect } from 'react'
 import { api } from '../../services/api'
-import {FiPlus, FiEdit, FiSearch, FiUserX, FiX, FiSave, FiAlertCircle} from 'react-icons/fi'
+import {FiPlus, FiEdit, FiSearch, FiUserX, FiX, FiSave, FiAlertCircle, FiTrash2} from 'react-icons/fi'
 import '../../styles/pages/admin/PatientManagement.css'
 
 // ============ TypeScript Interfaces (Match Backend Patient DTO) ============
@@ -226,6 +226,30 @@ export default function PatientManagement() {
         }
     }
 
+    // Handle permanent delete patient - DELETE /api/admin/patients/{id}
+    const handlePermanentDelete = async (patientName: string, id: number) => {
+        const confirmMessage = `Are you absolutely sure you want to permanently delete ${patientName}? This cannot be undone.`
+        if (!window.confirm(confirmMessage)) {
+            return
+        }
+
+        // Double confirmation for permanent deletion
+        const doubleConfirm = window.confirm(`Type "DELETE" to confirm permanent deletion of ${patientName}`)
+        if (!doubleConfirm) {
+            return
+        }
+
+        try {
+            await api.delete(`/admin/patients/${id}`)
+            showNotification('Patient permanently deleted', 'success')
+            await fetchPatients() // Refresh list
+        } catch (err: any) {
+            const errorMessage = err.response?.data?.message || err.message || 'Failed to delete patient'
+            showNotification(errorMessage, 'error')
+            console.error('Error deleting patient:', err)
+        }
+    }
+
     return (
         <div className="patient-management">
             {/* Notification Toast */}
@@ -329,6 +353,14 @@ export default function PatientManagement() {
                                             type="button"
                                         >
                                             <FiUserX />
+                                        </button>
+                                        <button
+                                            className="btn-icon danger-delete"
+                                            title="Permanently delete patient"
+                                            onClick={() => handlePermanentDelete(`${patient.name} ${patient.surname}`, patient.id)}
+                                            type="button"
+                                        >
+                                            <FiTrash2 />
                                         </button>
                                     </div>
                                 </td>

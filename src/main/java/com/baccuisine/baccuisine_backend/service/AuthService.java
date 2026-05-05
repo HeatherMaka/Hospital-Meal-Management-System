@@ -15,6 +15,7 @@ import com.baccuisine.baccuisine_backend.repository.PatientRepository;
 import com.baccuisine.baccuisine_backend.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
@@ -41,6 +43,8 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         try {
+            log.info("Login attempt for username: {}", request.getUsername());
+
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getUsername(),
@@ -51,11 +55,16 @@ public class AuthService {
             User user = userRepository.findByUsername(request.getUsername())
                     .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
+            log.info("User found: {} (active: {}, approved: {})", user.getUsername(), user.isActive(), user.isApproved());
+
             if (!user.isActive()) {
+                log.warn("Login failed: User {} is deactivated", user.getUsername());
                 throw new BadCredentialsException("Account is deactivated");
             }
 
             String token = jwtUtil.generateToken(user);
+
+            log.info("Login successful for user: {}", user.getUsername());
 
             return AuthResponse.builder()
                     .token(token)
@@ -67,6 +76,7 @@ public class AuthService {
                     .build();
 
         } catch (BadCredentialsException e) {
+            log.warn("Login failed for username {}: {}", request.getUsername(), e.getMessage());
             throw new BadCredentialsException("Invalid username or password");
         }
     }

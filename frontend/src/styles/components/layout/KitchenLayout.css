@@ -6,7 +6,8 @@
 
 .kitchen-sidebar {
     width: 280px;
-    background: linear-gradient(180deg, #10B981 0%, #059669 100%);
+    width: 280px;
+    background: linear-gradient(180deg, #1E3A8A 0%, #3B82F6 100%);
     color: white;
     display: flex;
     flex-direction: column;

@@ -28,7 +28,7 @@ public class MealController {
      * Get all active meals (Available to all authenticated users)
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF', 'PATIENT')")
     public ResponseEntity<List<MealDTO>> getAllActiveMeals() {
         return ResponseEntity.ok(mealService.getAllActiveMeals());
     }
@@ -37,7 +37,7 @@ public class MealController {
      * Get meal by ID (Available to all authenticated users)
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF', 'PATIENT')")
     public ResponseEntity<MealDTO> getMealById(@PathVariable Long id) {
         return ResponseEntity.ok(mealService.getMealById(id));
     }
@@ -46,7 +46,7 @@ public class MealController {
      * Get meals by type (Breakfast, Lunch, Supper)
      */
     @GetMapping("/type/{mealType}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF', 'PATIENT')")
     public ResponseEntity<List<MealDTO>> getMealsByType(@PathVariable MealType mealType) {
         return ResponseEntity.ok(mealService.getMealsByType(mealType));
     }
@@ -55,7 +55,7 @@ public class MealController {
      * Get meals compatible with specific dietary type (For patients)
      */
     @GetMapping("/dietary/{dietaryType}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF', 'PATIENT')")
     public ResponseEntity<List<MealDTO>> getMealsByDietaryType(@PathVariable DietaryType dietaryType) {
         return ResponseEntity.ok(mealService.getMealsByDietaryType(dietaryType));
     }
@@ -66,7 +66,7 @@ public class MealController {
      * Create new meal (Admin & Staff only)
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF')")
     public ResponseEntity<MealDTO> createMeal(@Valid @RequestBody MealRequest request) {
         MealDTO createdMeal = mealService.createMeal(request);
         return ResponseEntity.status(201).body(createdMeal);
@@ -76,7 +76,7 @@ public class MealController {
      * Update existing meal (Admin & Staff only)
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF')")
     public ResponseEntity<MealDTO> updateMeal(
             @PathVariable Long id,
             @Valid @RequestBody MealRequest request
@@ -109,7 +109,7 @@ public class MealController {
      * Get meal statistics (Admin & Staff only)
      */
     @GetMapping("/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF')")
     public ResponseEntity<?> getMealStatistics(
             @RequestParam(required = false) MealType mealType,
             @RequestParam(required = false) DietaryType dietaryType

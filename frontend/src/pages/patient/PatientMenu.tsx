@@ -62,7 +62,7 @@ export default function PatientMenu() {
     const { user, logout } = useAuth()
 
     // State
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+    const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])
     const [selectedMeals, setSelectedMeals] = useState<number[]>([]) // DailyMenu IDs
     const [specialRequest, setSpecialRequest] = useState('')
     const [menuItems, setMenuItems] = useState<DailyMenuItem[]>([])  // Flattened items
@@ -198,7 +198,8 @@ export default function PatientMenu() {
 
     // Format date for display
     const formatDate = (dateString: string): string => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+        const localDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
+        return new Date(localDateString).toLocaleDateString('en-US', {
             weekday: 'short', month: 'short', day: 'numeric'
         })
     }
@@ -281,7 +282,7 @@ export default function PatientMenu() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date().toISOString().split('T')[0]}
+                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
                     max={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                 />
                 <span className="selected-date-display">{formatDate(selectedDate)}</span>

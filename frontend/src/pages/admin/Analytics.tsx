@@ -20,7 +20,7 @@ export interface AnalyticsDTO {
     preparingOrders: number
     deliveredOrders: number
     cancelledOrders: number
-    ordersByMealType: Record<string, number>  // { "BREAKFAST": 15, "LUNCH": 22, "SUPPER": 8 }
+    ordersByMealType: Record<string, number>  // { "CEREAL": , "BREAKFAST": 15, "LUNCH": 22, "LUNCH_DESSERT": , "THREE_PM_TEAS": , "DINNER": 8, "DINNER_DESSERT": , }
     specialRequestCount: number
     newPatientsToday: number
     activeStaffCount: number

@@ -89,6 +89,14 @@ public class PatientService {
     }
 
     /**
+     * Permanently delete patient record from database
+     */
+    public void deletePatient(Long id) {
+        Patient patient = getPatientById(id);
+        patientRepository.delete(patient);
+    }
+
+    /**
      * Get patient count for analytics
      */
     public long getActivePatientCount() {

@@ -229,6 +229,17 @@
     color: #EF4444;
 }
 
+.action-buttons .btn-icon.danger-delete {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+.action-buttons .btn-icon.danger-delete:hover {
+    background: #FECACA;
+    color: #991B1B;
+    transform: translateY(-1px);
+}
+
 .action-buttons .btn-icon svg {
     width: 1rem;
     height: 1rem;

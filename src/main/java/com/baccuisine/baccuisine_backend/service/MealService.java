@@ -26,6 +26,7 @@ public class MealService {
                 .name(request.getName())
                 .description(request.getDescription())
                 .mealType(request.getMealType())
+                .mealDate(request.getMealDate() != null ? request.getMealDate() : LocalDate.now())
                 .compatibleDiets(request.getCompatibleDiets())
                 .isActive(true)
                 .build();
@@ -63,6 +64,9 @@ public class MealService {
         meal.setName(request.getName());
         meal.setDescription(request.getDescription());
         meal.setMealType(request.getMealType());
+        if (request.getMealDate() != null) {
+            meal.setMealDate(request.getMealDate());
+        }
         if (request.getCompatibleDiets() != null) {
             meal.setCompatibleDiets(request.getCompatibleDiets());
         }

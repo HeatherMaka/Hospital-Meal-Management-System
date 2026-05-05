@@ -72,6 +72,7 @@ export default function MenuManagement() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [notification, setNotification] = useState<Notification | null>(null)
+    const [editingMealId, setEditingMealId] = useState<number | null>(null)
 
     // Form state
     const [formData, setFormData] = useState<MealFormData>({
@@ -201,22 +202,55 @@ export default function MenuManagement() {
         setIsSubmitting(true)
 
         try {
+            //  Validate form data
+            if (!formData.name.trim()) {
+                showNotification('Meal name is required', 'error')
+                setIsSubmitting(false)
+                return
+            }
+
+            if (formData.name.length > 255) {
+                showNotification('Meal name must be 255 characters or less', 'error')
+                setIsSubmitting(false)
+                return
+            }
+
+            if (!formData.description.trim()) {
+                showNotification('Description is required', 'error')
+                setIsSubmitting(false)
+                return
+            }
+
+            if (formData.description.length > 5000) {
+                showNotification('Description must be 5000 characters or less', 'error')
+                setIsSubmitting(false)
+                return
+            }
+
             //  Map frontend field names to backend expectations
             const payload = {
-                name: formData.name,
-                description: formData.description,
+                name: formData.name.trim(),
+                description: formData.description.trim(),
                 mealType: formData.mealType,
-                compatibleDiets: formData.compatibleDiets,  //  Backend expects this field name
-                orderDeadline: formData.orderDeadline || null,
+                mealDate: selectedDate,                      // Backend requires mealDate (YYYY-MM-DD format)
+                compatibleDiets: formData.compatibleDiets,  //  Backend expects this field name as Set<DietaryType>
+                // Note: orderDeadline is NOT part of MealRequest
             }
+
+            console.log('Submitting meal with payload:', JSON.stringify(payload, null, 2))
+            console.log('Form data:', formData)
+            console.log('Selected date:', selectedDate)
+            console.log('Compatible diets type:', typeof formData.compatibleDiets, formData.compatibleDiets)
 
             if (modalMode === 'create') {
                 // POST /api/meals
-                await api.post<Meal>('/meals', payload)
+                const response = await api.post<Meal>('/meals', payload)
+                console.log('Meal created successfully:', response.data)
                 showNotification('Meal created successfully', 'success')
             } else if (modalMode === 'edit' && editingMealId) {
                 // PUT /api/meals/{id}
-                await api.put<Meal>(`/meals/${editingMealId}`, payload)
+                const response = await api.put<Meal>(`/meals/${editingMealId}`, payload)
+                console.log('Meal updated successfully:', response.data)
                 showNotification('Meal updated successfully', 'success')
             }
 
@@ -224,6 +258,9 @@ export default function MenuManagement() {
             handleCloseMealModal()
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to save meal'
+            const fullErrorData = err.response?.data
+            console.log('Full error response:', fullErrorData)
+            console.log('Error status:', err.response?.status)
             showNotification(errorMessage, 'error')
             console.error('Error saving meal:', err)
         } finally {

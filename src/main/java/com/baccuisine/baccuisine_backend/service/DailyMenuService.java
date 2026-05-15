@@ -1,3 +1,4 @@
+// src/main/java/com/baccuisine/baccuisine_backend/service/DailyMenuService.java
 package com.baccuisine.baccuisine_backend.service;
 
 import com.baccuisine.baccuisine_backend.dto.request.DailyMenuRequest;
@@ -11,38 +12,46 @@ import com.baccuisine.baccuisine_backend.model.Meal;
 import com.baccuisine.baccuisine_backend.repository.DailyMenuRepository;
 import com.baccuisine.baccuisine_backend.repository.MealRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DailyMenuService {
 
     private final DailyMenuRepository dailyMenuRepository;
     private final MealRepository mealRepository;
     private final MealService mealService;
 
+    /**
+     * Add meals to the daily menu.
+     *
+     * The schema is BIDIRECTIONAL:
+     *   meals.daily_menu_id  → FK to daily_menus  (Meal owns this column)
+     *   daily_menus.meal_id  → FK to meals        (DailyMenu owns this column)
+     *
+     * Both FKs must be set and saved in the correct order:
+     *   1. Save Meal first (no daily_menu_id yet — avoids circular FK issue)
+     *   2. Save DailyMenu with meal_id pointing to the saved Meal
+     *   3. Update Meal.dailyMenu to point back to the saved DailyMenu
+     *   4. Save Meal again so daily_menu_id column is written
+     */
     @Transactional
     public DailyMenuDTO addToDailyMenu(DailyMenuRequest request) {
-        DailyMenu dailyMenu = dailyMenuRepository
-                .findByMenuDateAndMealType(request.getMenuDate(), request.getMealType())
-                .orElseGet(() -> {
-                    DailyMenu newMenu = DailyMenu.builder()
-                            .menuDate(request.getMenuDate())
-                            .mealType(request.getMealType())
-                            .isActive(true)
-                            .createdById(request.getCreatedById())
-                            .build();
-                    return dailyMenuRepository.save(newMenu);
-                });
+        log.info("Adding meals to daily menu: date={}, mealType={}",
+                request.getMenuDate(), request.getMealType());
 
         List<Meal> addedMeals = new ArrayList<>();
+
         for (DailyMenuRequest.MealItemRequest mealReq : request.getMeals()) {
+
+            // ── Step 1: Save Meal without dailyMenu reference yet ──────────────
             Meal meal = Meal.builder()
                     .name(mealReq.getName())
                     .description(mealReq.getDescription())
@@ -50,46 +59,106 @@ public class DailyMenuService {
                     .mealDate(request.getMenuDate())
                     .compatibleDiets(mealReq.getCompatibleDiets() != null
                             ? new HashSet<>(mealReq.getCompatibleDiets())
-                            : Set.of(DietaryType.NORMAL))
-                    .orderDeadline(mealReq.getOrderDeadline())
+                            : new HashSet<>(Set.of(DietaryType.NORMAL)))
+                    .orderDeadline(mealReq.getOrderDeadline())  //  LocalTime, no conversion needed
                     .isActive(true)
                     .createdById(request.getCreatedById())
                     .createdByRole(Role.KITCHEN_STAFF)
-                    .dailyMenu(dailyMenu)
+                    // dailyMenu intentionally null here — set after DailyMenu is saved
                     .build();
-            addedMeals.add(mealRepository.save(meal));
+
+            Meal savedMeal = mealRepository.save(meal);
+
+            // ── Step 2: Save DailyMenu with meal_id pointing to the saved Meal ─
+            DailyMenu dailyMenu = DailyMenu.builder()
+                    .menuDate(request.getMenuDate())
+                    .mealType(request.getMealType())
+                    .meal(savedMeal)              // ← sets daily_menus.meal_id
+                    .isActive(true)
+                    .createdById(request.getCreatedById())
+                    .build();
+
+            DailyMenu savedDailyMenu = dailyMenuRepository.save(dailyMenu);
+
+            // ── Step 3: Set back-reference on Meal and save again ──────────────
+            savedMeal.setDailyMenu(savedDailyMenu);  // ← sets meals.daily_menu_id
+            mealRepository.save(savedMeal);
+
+            addedMeals.add(savedMeal);
         }
 
-        dailyMenuRepository.save(dailyMenu);
-        return mapToDTO(dailyMenu, addedMeals);
+        log.info("Added {} meals to daily menu", addedMeals.size());
+
+        return DailyMenuDTO.builder()
+                .date(request.getMenuDate())
+                .mealType(request.getMealType())
+                .items(addedMeals.stream()
+                        .map(mealService::mapToDTO)  //  Uses updated MealService mapping
+                        .collect(Collectors.toList()))
+                .build();
     }
 
+    /**
+     * Get all daily menus for a date grouped by mealType (for staff view).
+     */
     public List<DailyMenuDTO> getDailyMenusByDate(LocalDate date) {
+        log.debug("Fetching daily menus for date={}", date);
+
+        List<DailyMenu> allMenusForDate = dailyMenuRepository
+                .findByMenuDateAndIsActiveTrue(date);
+
+        // Group by mealType, collect the Meal from each DailyMenu row
+        Map<MealType, List<Meal>> groupedByType = allMenusForDate.stream()
+                .filter(dm -> dm.getMeal() != null && dm.getMeal().isActive())
+                .collect(Collectors.groupingBy(
+                        DailyMenu::getMealType,
+                        Collectors.mapping(DailyMenu::getMeal, Collectors.toList())
+                ));
+
         return Arrays.stream(MealType.values())
-                .map(mealType -> {
-                    try {
-                        return getDailyMenuByDateAndType(date, mealType);
-                    } catch (RuntimeException e) {
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
+                .filter(groupedByType::containsKey)
+                .map(mealType -> DailyMenuDTO.builder()
+                        .date(date)
+                        .mealType(mealType)
+                        .items(groupedByType.get(mealType).stream()
+                                .map(mealService::mapToDTO)
+                                .collect(Collectors.toList()))
+                        .build())
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Get daily menu for a specific mealType on a date (for staff view).
+     */
     public DailyMenuDTO getDailyMenuByDateAndType(LocalDate date, MealType mealType) {
-        DailyMenu dailyMenu = dailyMenuRepository
-                .findByMenuDateAndMealType(date, mealType)
-                .orElseThrow(() -> new RuntimeException("Daily menu not found for " + date + " " + mealType));
+        log.debug("Fetching daily menu for date={}, type={}", date, mealType);
 
-        List<Meal> meals = mealRepository
-                .findByMealDateAndMealTypeAndIsActiveTrue(date, mealType);
+        List<MealDTO> mealDTOs = dailyMenuRepository.findByMenuDateAndIsActiveTrue(date)
+                .stream()
+                .filter(dm -> dm.getMealType() == mealType)
+                .filter(dm -> dm.getMeal() != null && dm.getMeal().isActive())
+                .map(dm -> mealService.mapToDTO(dm.getMeal()))
+                .collect(Collectors.toList());
 
-        return mapToDTO(dailyMenu, meals);
+        if (mealDTOs.isEmpty()) {
+            log.warn("No meals found for {} on {}", mealType, date);
+            throw new RuntimeException("No meals found for " + mealType + " on " + date);
+        }
+
+        return DailyMenuDTO.builder()
+                .date(date)
+                .mealType(mealType)
+                .items(mealDTOs)
+                .build();
     }
 
+    /**
+     * Deactivate a meal and its DailyMenu row (remove from today's menu).
+     */
     @Transactional
     public void deactivateMeal(Long mealId) {
+        log.info("Deactivating meal: id={}", mealId);
+
         Meal meal = mealRepository.findById(mealId)
                 .orElseThrow(() -> new RuntimeException("Meal not found: " + mealId));
 
@@ -97,12 +166,24 @@ public class DailyMenuService {
             throw new SecurityException("Cannot modify this meal");
         }
 
+        // Deactivate the Meal
         meal.setActive(false);
         mealRepository.save(meal);
+
+        // Deactivate the DailyMenu row that owns this meal (via meal_id FK)
+        if (meal.getDailyMenu() != null) {
+            DailyMenu dm = meal.getDailyMenu();
+            dm.setActive(false);
+            dailyMenuRepository.save(dm);
+        }
+
+        log.info("Meal {} and its daily menu entry deactivated", mealId);
     }
 
     @Transactional
     public void updateMeal(Long mealId, DailyMenuRequest.MealUpdateRequest updateRequest) {
+        log.info("Updating meal: id={}", mealId);
+
         Meal meal = mealRepository.findById(mealId)
                 .orElseThrow(() -> new RuntimeException("Meal not found: " + mealId));
 
@@ -120,46 +201,41 @@ public class DailyMenuService {
         }
 
         mealRepository.save(meal);
+        log.info("Meal {} updated successfully", mealId);
     }
 
+    /**
+     * Get menu for a patient filtered by their dietary type.
+     */
     public List<DailyMenuDTO> getDailyMenuForPatient(LocalDate date, DietaryType patientDietaryType) {
+        log.debug("Fetching patient menu for date={}, dietaryType={}", date, patientDietaryType);
+
         List<MealDTO> allMeals = mealService.getAvailableMealsForPatient(date, patientDietaryType);
 
         Map<MealType, List<MealDTO>> groupedByType = allMeals.stream()
                 .collect(Collectors.groupingBy(MealDTO::getMealType));
 
-        List<DailyMenuDTO> dailyMenus = new ArrayList<>();
-
+        List<DailyMenuDTO> result = new ArrayList<>();
         for (MealType mealType : MealType.values()) {
             List<MealDTO> mealsOfType = groupedByType.getOrDefault(mealType, List.of());
             if (!mealsOfType.isEmpty()) {
-                dailyMenus.add(DailyMenuDTO.builder()
+                result.add(DailyMenuDTO.builder()
                         .date(date)
                         .mealType(mealType)
                         .items(mealsOfType)
                         .build());
             }
         }
-        return dailyMenus;
+        return result;
     }
 
     public List<DailyMenuDTO> getMenuForDateRange(LocalDate startDate, LocalDate endDate) {
+        log.debug("Fetching menu for date range: {} to {}", startDate, endDate);
+
         List<DailyMenuDTO> result = new ArrayList<>();
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             result.addAll(getDailyMenuForPatient(date, null));
         }
         return result;
-    }
-
-    private DailyMenuDTO mapToDTO(DailyMenu dailyMenu, List<Meal> meals) {
-        List<MealDTO> mealDTOs = meals.stream()
-                .map(mealService::mapToDTO)
-                .collect(Collectors.toList());
-
-        return DailyMenuDTO.builder()
-                .date(dailyMenu.getMenuDate())
-                .mealType(dailyMenu.getMealType())
-                .items(mealDTOs)
-                .build();
     }
 }

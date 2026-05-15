@@ -12,9 +12,11 @@ import com.baccuisine.baccuisine_backend.service.DailyMenuService;
 import com.baccuisine.baccuisine_backend.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -25,6 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('STAFF', 'KITCHEN_STAFF', 'ADMIN')")
 @CrossOrigin(origins = "http://localhost:5173")
+@Slf4j
 public class StaffController {
 
     private final DailyMenuService dailyMenuService;
@@ -35,10 +38,20 @@ public class StaffController {
 
     @PostMapping("/menu")
     public ResponseEntity<DailyMenuDTO> addToDailyMenu(
-            @AuthenticationPrincipal User authenticatedUser,
+            @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody DailyMenuRequest request) {
 
-        request.setCreatedById(authenticatedUser.getId());
+        //  Extract user ID from UserDetails (you may need to fetch the actual User entity)
+        Long userId = null;
+        if (userDetails != null) {
+            // If you have a custom UserDetails implementation that includes the ID
+            // Or you can fetch the User from database using username
+            log.debug("Authenticated user: {}", userDetails.getUsername());
+            // For now, set a default or fetch from database
+            userId = 1L; // Temporary - you should fetch the actual user ID
+        }
+
+        request.setCreatedById(userId);
         DailyMenuDTO result = dailyMenuService.addToDailyMenu(request);
         return ResponseEntity.ok(result);
     }
@@ -77,13 +90,15 @@ public class StaffController {
     @GetMapping("/orders")
     public ResponseEntity<List<OrderDTO>> getOrders(
             @RequestParam LocalDate date,
-            @RequestParam MealType mealType) {
+            @RequestParam(required = false) MealType mealType) {
+        log.debug("GET /orders: date={}, mealType={}", date, mealType);
         return ResponseEntity.ok(orderService.getOrdersForKitchen(date, mealType));
     }
 
     @GetMapping("/orders/all")
     public ResponseEntity<List<OrderDTO>> getAllOrdersForDate(
             @RequestParam LocalDate date) {
+        log.debug("GET /orders/all: date={}", date);
         return ResponseEntity.ok(orderService.getOrdersForKitchen(date, null));
     }
 

@@ -1,35 +1,44 @@
-// src/pages/patient/PatientMenu.tsx
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { api } from '../../services/api'  //Use shared axios instance
+import { api } from '../../services/api'
 import {
     FiCalendar, FiCheck, FiAlertCircle, FiRefreshCw,
     FiClock, FiCoffee
 } from 'react-icons/fi'
 import '../../styles/pages/patient/PatientMenu.css'
 
-// ============ TypeScript Interfaces (Match Backend DTOs) ============
+// ============ TypeScript Interfaces ============
 
-// Backend DailyMenuDTO: { date: string, mealType: string, items: MealDTO[] }
-export interface DailyMenu {
-    date: string              // ISO date "YYYY-MM-DD"
-    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
-    items: DailyMenuItem[]
+// Raw shape coming from backend - FLAT ARRAY of MealDTO objects
+interface RawMealDTO {
+    id: number
+    name: string
+    description: string
+    mealType: MealType
+    mealDate?: string
+    orderDeadline?: string
+    compatibleDiets: string[]
+    active: boolean
+    orderable: boolean
+    createdById?: number
+    createdByRole?: string
 }
 
+// Normalized internal shape used by the component
 export interface DailyMenuItem {
-    id: number                // This is the DailyMenu ID (for ordering)
-    mealName: string          // Backend sends 'name', we map to 'mealName'
+    id: number
+    mealName: string
     description: string
-    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
-    dietaryTypes: string[]    // Backend: compatibleDiets (enum array)
-    isOrderable: boolean      // Derived from isActive + orderDeadline
-    orderDeadline?: string    // ISO time "HH:mm:ss"
+    mealType: MealType
+    dietaryTypes: string[]
+    isOrderable: boolean
+    orderDeadline?: string
     imageUrl?: string
 }
 
+//  Backend expects 'mealId', not 'dailyMenuId'
 export interface OrderRequest {
-    dailyMenuId: number       // ID of the DailyMenu entry
+    mealId: number  // ← Changed from dailyMenuId to mealId
     quantity?: number
     specialRequest?: string
 }
@@ -42,75 +51,79 @@ export interface OrderDTO {
     bedNumber: string
     mealId: number
     mealName: string
-    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
-    orderDate: string         // ISO date
+    mealType: MealType
+    orderDate: string
     quantity: number
     specialRequest?: string
     status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
-    orderedAt: string         // ISO datetime (backend: createdAt)
+    orderedAt: string
     updatedAt?: string
 }
 
+type MealType = 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
 type NotificationType = 'success' | 'error' | 'info'
+
 interface Notification {
     message: string
     type: NotificationType
+}
+
+// ============ Field Mapping Helper ============
+
+function mapRawMealToMenuItem(raw: RawMealDTO): DailyMenuItem {
+    return {
+        id: raw.id,
+        mealName: raw.name,
+        description: raw.description,
+        mealType: raw.mealType,
+        dietaryTypes: raw.compatibleDiets ?? [],
+        isOrderable: raw.orderable,
+        orderDeadline: raw.orderDeadline,
+    }
 }
 
 // ============ Main Component ============
 export default function PatientMenu() {
     const { user, logout } = useAuth()
 
-    // State
-    const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])
-    const [selectedMeals, setSelectedMeals] = useState<number[]>([]) // DailyMenu IDs
+    const [selectedDate, setSelectedDate] = useState(
+        new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+            .toISOString().split('T')[0]
+    )
+    const [selectedMeals, setSelectedMeals] = useState<number[]>([])
     const [specialRequest, setSpecialRequest] = useState('')
-    const [menuItems, setMenuItems] = useState<DailyMenuItem[]>([])  // Flattened items
+    const [menuItems, setMenuItems] = useState<DailyMenuItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [notification, setNotification] = useState<Notification | null>(null)
     const [orderHistory, setOrderHistory] = useState<OrderDTO[]>([])
     const [showOrderHistory, setShowOrderHistory] = useState(false)
 
-    //  Fetch menu for selected date using shared api helper
+    // ── Fetch menu ──────────────────────────────────────────────────────────────
     const fetchMenu = async (date: string) => {
         try {
             setIsLoading(true)
 
-            // Backend returns: DailyMenuDTO[] = [{ date, mealType, items: [...] }, ...]
-            const dailyMenus = await api.get<DailyMenu[]>(`/patient/menu`, {
-                params: { date }
-            }).then(res => res.data)
+            const response = await api.get<RawMealDTO[]>('/patient/menu', { params: { date } })
+            const meals = response.data ?? []
 
-            //  Flatten all items from all meal types into single array
-            const allItems = dailyMenus.flatMap(menu =>
-                menu.items.map(item => ({
-                    ...item,
-                    // ✅ Map backend 'name' to frontend 'mealName' if needed
-                    mealName: item.mealName || (item as any).name,
-                    // ✅ Map backend 'compatibleDiets' to 'dietaryTypes' if needed
-                    dietaryTypes: item.dietaryTypes || (item as any).compatibleDiets || [],
-                    // ✅ Derive isOrderable if not provided
-                    isOrderable: item.isOrderable ?? (
-                        item.orderDeadline
-                            ? new Date(`1970-01-01T${item.orderDeadline}`) > new Date()
-                            : true
-                    )
-                }))
-            )
+            console.debug('Raw backend response (flat array):', meals)
+            console.debug(`Found ${meals.length} meals from backend`)
 
-            console.debug(` Loaded ${allItems.length} menu items for ${date}`)
+            const allItems: DailyMenuItem[] = meals.map(rawMeal => mapRawMealToMenuItem(rawMeal))
+
+            console.debug(`Mapped ${allItems.length} menu items for ${date}:`, allItems)
+
             setMenuItems(allItems)
             setSelectedMeals([])
             setSpecialRequest('')
 
         } catch (err: any) {
-            console.error(' Error fetching menu:', err)
+            console.error('Error fetching menu:', err)
             const errorMessage = err.response?.data?.message || err.message || 'Failed to load menu'
             showNotification(errorMessage, 'error')
             setMenuItems([])
 
-            // Auto-logout on auth errors
             if (err.response?.status === 401 || err.response?.status === 403) {
                 logout()
             }
@@ -119,32 +132,28 @@ export default function PatientMenu() {
         }
     }
 
-    //  Fetch order history using shared api helper
+    // ── Fetch order history ─────────────────────────────────────────────────────
     const fetchOrderHistory = async (date?: string) => {
         try {
             const params = date ? { date } : undefined
-            const data = await api.get<OrderDTO[]>(`/patient/orders`, { params })
-                .then(res => res.data)
-            setOrderHistory(Array.isArray(data) ? data : [])
+            const response = await api.get<OrderDTO[]>('/patient/orders', { params })
+            setOrderHistory(Array.isArray(response.data) ? response.data : [])
         } catch (err: any) {
             console.error('Error fetching order history:', err)
-            // Don't auto-logout for non-auth errors in order history
         }
     }
 
-    // Initial load
     useEffect(() => {
         fetchMenu(selectedDate)
         fetchOrderHistory()
     }, [selectedDate])
 
-    // Notification helper
+    // ── Helpers ─────────────────────────────────────────────────────────────────
     const showNotification = (message: string, type: NotificationType): void => {
         setNotification({ message, type })
         setTimeout(() => setNotification(null), 4000)
     }
 
-    // Handle meal selection toggle
     const handleMealToggle = (mealId: number): void => {
         const meal = menuItems.find(m => m.id === mealId)
         if (!meal?.isOrderable) return
@@ -155,7 +164,7 @@ export default function PatientMenu() {
         )
     }
 
-    //  Submit order to backend using shared api helper
+    // ── Submit order ────────────────────────────────────────────────────────────
     const handleSubmitOrder = async (): Promise<void> => {
         if (selectedMeals.length === 0) {
             showNotification('Please select at least one meal', 'error')
@@ -164,25 +173,26 @@ export default function PatientMenu() {
 
         setIsSubmitting(true)
         try {
-            // Each selected meal becomes an order
-            const orders = selectedMeals.map(mealId => ({
-                dailyMenuId: mealId,  // This is the DailyMenu ID from backend
-                quantity: 1,
-                specialRequest: specialRequest.trim() || undefined,
-            } as OrderRequest))
-
-            // Submit each order individually
-            for (const order of orders) {
+            // Send each order with 'mealId' field (not 'dailyMenuId')
+            for (const mealId of selectedMeals) {
+                const order: OrderRequest = {
+                    mealId: mealId,  // ← Changed from dailyMenuId to mealId
+                    quantity: 1,
+                    specialRequest: specialRequest.trim() || undefined,
+                }
                 await api.post<OrderDTO>('/patient/orders', order)
             }
 
-            showNotification(`Order submitted successfully! ${selectedMeals.length} meal(s) ordered.`, 'success')
+            showNotification(
+                `Order submitted successfully! ${selectedMeals.length} meal(s) ordered.`,
+                'success'
+            )
             setSelectedMeals([])
             setSpecialRequest('')
             await fetchOrderHistory()
 
         } catch (err: any) {
-            console.error(' Error submitting order:', err)
+            console.error('Error submitting order:', err)
             const errorMessage = err.response?.data?.message || err.message || 'Failed to submit order'
             showNotification(errorMessage, 'error')
         } finally {
@@ -190,13 +200,11 @@ export default function PatientMenu() {
         }
     }
 
-    // Refresh menu manually
     const handleRefresh = (): void => {
         fetchMenu(selectedDate)
         showNotification('Refreshing menu...', 'info')
     }
 
-    // Format date for display
     const formatDate = (dateString: string): string => {
         const localDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
         return new Date(localDateString).toLocaleDateString('en-US', {
@@ -204,51 +212,70 @@ export default function PatientMenu() {
         })
     }
 
-    // Format time for deadline display
     const formatTime = (timeString?: string): string => {
         if (!timeString) return ''
-        // Handle both "HH:mm:ss" and "HH:mm" formats
         const time = timeString.length > 5 ? timeString.substring(0, 5) : timeString
         return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', {
             hour: '2-digit', minute: '2-digit'
         })
     }
 
-    // Get meal type icon
-    const getMealTypeIcon = (mealType: string) => {
+    const getMealTypeIcon = (mealType: string): string => {
         switch (mealType) {
-            case 'CEREAL': return '🥣'
-            case 'BREAKFAST': return '🌅'
-            case 'LUNCH': return '☀️'
-            case 'LUNCH_DESSERT': return '🍰'
-            case 'THREE_PM_TEAS': return '🫖'
-            case 'DINNER': return '🌙'
-            case 'DINNER_DESSERT': return '🍨'
-            default: return '🍽️'
+            case 'CEREAL':         return ''
+            case 'BREAKFAST':      return ''
+            case 'LUNCH':          return ''
+            case 'LUNCH_DESSERT':  return ''
+            case 'THREE_PM_TEAS':  return ''
+            case 'DINNER':         return ''
+            case 'DINNER_DESSERT': return ''
+            default:               return ''
         }
     }
 
-    // Get order status badge class
+    const getMealTypeLabel = (mealType: string): string => {
+        switch (mealType) {
+            case 'CEREAL':         return 'Cereal'
+            case 'BREAKFAST':      return 'Breakfast'
+            case 'LUNCH':          return 'Lunch'
+            case 'LUNCH_DESSERT':  return 'Lunch Dessert'
+            case 'THREE_PM_TEAS':  return '3PM Teas'
+            case 'DINNER':         return 'Dinner'
+            case 'DINNER_DESSERT': return 'Dinner Dessert'
+            default:               return mealType
+        }
+    }
+
     const getOrderStatusClass = (status: string): string => {
         const classes: Record<string, string> = {
-            'PENDING': 'badge-pending',
-            'CONFIRMED': 'badge-confirmed',
-            'PREPARING': 'badge-preparing',
-            'DELIVERED': 'badge-delivered',
-            'CANCELLED': 'badge-cancelled'
+            PENDING:   'badge-pending',
+            CONFIRMED: 'badge-confirmed',
+            PREPARING: 'badge-preparing',
+            DELIVERED: 'badge-delivered',
+            CANCELLED: 'badge-cancelled',
         }
         return classes[status] || 'badge-default'
     }
 
+    const MEAL_TYPE_ORDER: MealType[] = [
+        'CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT',
+        'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'
+    ]
+
+    // ── Render ──────────────────────────────────────────────────────────────────
     return (
         <div className="patient-menu">
             {/* Notification Toast */}
             {notification && (
                 <div className={`notification-toast ${notification.type}`}>
-                    {notification.type === 'error' && <FiAlertCircle />}
+                    {notification.type === 'error'   && <FiAlertCircle />}
                     {notification.type === 'success' && <FiCheck />}
                     {notification.message}
-                    <button className="notification-close" onClick={() => setNotification(null)} type="button">
+                    <button
+                        className="notification-close"
+                        onClick={() => setNotification(null)}
+                        type="button"
+                    >
                         ×
                     </button>
                 </div>
@@ -257,7 +284,7 @@ export default function PatientMenu() {
             {/* Header */}
             <div className="menu-header">
                 <div>
-                    <h1>Welcome, {user?.fullName || user?.name || user?.username || 'Patient'}! 👋</h1>
+                    <h1>Welcome, {user?.fullName || user?.name || user?.username || 'Patient'}! </h1>
                     <p className="header-subtitle">Select your meals from today's kitchen offerings</p>
                 </div>
                 <div className="header-actions">
@@ -266,9 +293,14 @@ export default function PatientMenu() {
                         onClick={() => setShowOrderHistory(!showOrderHistory)}
                         type="button"
                     >
-                        {showOrderHistory ? ' View Menu' : ' Order History'}
+                        {showOrderHistory ? 'View Menu' : 'Order History'}
                     </button>
-                    <button className="btn-refresh" onClick={handleRefresh} disabled={isLoading} type="button">
+                    <button
+                        className="btn-refresh"
+                        onClick={handleRefresh}
+                        disabled={isLoading}
+                        type="button"
+                    >
                         <FiRefreshCw className={isLoading ? 'spinning' : ''} />
                     </button>
                 </div>
@@ -282,13 +314,15 @@ export default function PatientMenu() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
-                    max={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                        .toISOString().split('T')[0]}
+                    max={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                        .toISOString().split('T')[0]}
                 />
                 <span className="selected-date-display">{formatDate(selectedDate)}</span>
             </div>
 
-            {/* Order History Section */}
+            {/* Order History */}
             {showOrderHistory ? (
                 <div className="order-history-section slide-in">
                     <div className="section-header">
@@ -306,12 +340,12 @@ export default function PatientMenu() {
                             {orderHistory.map((order) => (
                                 <div key={order.id} className="order-card">
                                     <div className="order-header">
-                    <span className="order-meal-type">
-                      {getMealTypeIcon(order.mealType)} {order.mealType}
-                    </span>
+                                        <span className="order-meal-type">
+                                            {getMealTypeIcon(order.mealType)} {getMealTypeLabel(order.mealType)}
+                                        </span>
                                         <span className={`badge ${getOrderStatusClass(order.status)}`}>
-                      {order.status}
-                    </span>
+                                            {order.status}
+                                        </span>
                                     </div>
                                     <h3>{order.mealName}</h3>
                                     {order.specialRequest && (
@@ -329,7 +363,7 @@ export default function PatientMenu() {
                     )}
                 </div>
             ) : (
-                /* Menu Selection Section */
+                /* Menu Selection */
                 <div className="menu-selection-section">
                     {isLoading ? (
                         <div className="loading-state">
@@ -340,10 +374,13 @@ export default function PatientMenu() {
                         <div className="empty-menu">
                             <FiAlertCircle className="empty-icon" />
                             <h3>No meals available</h3>
-                            <p>Kitchen staff haven't added meals for {formatDate(selectedDate)} yet. Check back later!</p>
+                            <p>
+                                Kitchen staff haven't added meals for {formatDate(selectedDate)} yet.
+                                Check back later!
+                            </p>
                         </div>
                     ) : (
-                        ['CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT', 'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'].map((mealType) => {
+                        MEAL_TYPE_ORDER.map((mealType) => {
                             const meals = menuItems.filter(m => m.mealType === mealType)
                             if (meals.length === 0) return null
 
@@ -352,7 +389,7 @@ export default function PatientMenu() {
                                     <div className="meal-type-header">
                                         <h2>
                                             <span className="meal-type-icon">{getMealTypeIcon(mealType)}</span>
-                                            {mealType.charAt(0) + mealType.slice(1).toLowerCase().replace('dessert', ' Dessert').replace('threepmteas', '3PM Teas').replace('cereal', 'Cereal')}
+                                            {getMealTypeLabel(mealType)}
                                         </h2>
                                         {meals.every(m => !m.isOrderable) && (
                                             <span className="ordering-closed">Ordering Closed</span>
@@ -388,12 +425,12 @@ export default function PatientMenu() {
 
                                                     <p className="meal-description">{meal.description}</p>
 
-                                                    {meal.dietaryTypes?.length > 0 && (
+                                                    {meal.dietaryTypes.length > 0 && (
                                                         <div className="dietary-tags">
                                                             {meal.dietaryTypes.map((type) => (
                                                                 <span key={type} className="dietary-tag">
-                                  {type}
-                                </span>
+                                                                    {type.replace(/_/g, ' ')}
+                                                                </span>
                                                             ))}
                                                         </div>
                                                     )}
@@ -401,7 +438,18 @@ export default function PatientMenu() {
                                                     {meal.orderDeadline && !meal.isOrderable && (
                                                         <div className="deadline-notice">
                                                             <FiClock />
-                                                            <span>Ordering closed at {formatTime(meal.orderDeadline)}</span>
+                                                            <span>
+                                                                Ordering closed at {formatTime(meal.orderDeadline)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {meal.orderDeadline && meal.isOrderable && (
+                                                        <div className="deadline-notice open">
+                                                            <FiClock />
+                                                            <span>
+                                                                Order by {formatTime(meal.orderDeadline)}
+                                                            </span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -420,9 +468,9 @@ export default function PatientMenu() {
                         })
                     )}
 
-                    {/* Special Request Section */}
+                    {/* Special Request */}
                     <div className="special-request-section">
-                        <h3> Special Requests</h3>
+                        <h3>Special Requests</h3>
                         <textarea
                             placeholder="Any allergies, preferences, or special instructions? (Optional)"
                             value={specialRequest}
@@ -433,7 +481,7 @@ export default function PatientMenu() {
                         <small className="char-count">{specialRequest.length}/500 characters</small>
                     </div>
 
-                    {/* Order Summary & Submit */}
+                    {/* Order Summary */}
                     {selectedMeals.length > 0 && (
                         <div className="order-summary">
                             <div className="summary-header">
@@ -460,7 +508,7 @@ export default function PatientMenu() {
                         </div>
                     )}
 
-                    {/* Submit Button */}
+                    {/* Submit */}
                     <div className="order-actions">
                         <button
                             className="btn-submit"

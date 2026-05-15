@@ -1,38 +1,39 @@
 // src/pages/kitchen/MenuManagement.tsx
 import { useState, useEffect } from 'react'
-import { api } from '../../services/api'  //  Use shared axios instance
+import { api } from '../../services/api'
 import {
     FiPlus, FiEdit, FiTrash2, FiCalendar, FiX, FiSave, FiAlertCircle, FiRefreshCw
 } from 'react-icons/fi'
 import '../../styles/pages/kitchen/MenuManagement.css'
 
-//  Updated to use 7 meal types
 type MealType = 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
 
-// Backend MealDTO
+// Matches backend MealDTO exactly
+// Jackson serializes:  isActive → "active",  isOrderable() → "orderable"
 export interface Meal {
     id: number
     name: string
     description: string
     mealType: MealType
-    compatibleDiets: string[]  //  Backend field name (not dietaryTypes)
-    isActive: boolean
-    mealDate?: string          // ISO date "YYYY-MM-DD"
-    orderDeadline?: string     // ISO time "HH:mm:ss"
+    compatibleDiets: string[]   // Set<DietaryType> → string[]
+    active: boolean             // Jackson: isActive → "active"
+    orderable?: boolean         // Jackson: isOrderable() → "orderable"
+    mealDate?: string
+    orderDeadline?: string      // "HH:mm:ss"
     createdAt?: string
     updatedAt?: string
 }
 
-// Backend DailyMenuDTO: { date, mealType, items[] }
+// Backend DailyMenuDTO: { date, mealType, items: MealDTO[] }
 export interface DailyMenuDTO {
-    date: string              // ISO date "YYYY-MM-DD"
+    date: string
     mealType: MealType
-    items: Meal[]             // Array of meals for this type
+    items: Meal[]
 }
 
-// Request to add meals to daily menu (matches backend DailyMenuRequest)
+// Matches backend DailyMenuRequest
 export interface DailyMenuRequest {
-    menuDate: string          // ISO date
+    menuDate: string
     mealType: MealType
     meals: MealItemRequest[]
 }
@@ -40,15 +41,15 @@ export interface DailyMenuRequest {
 export interface MealItemRequest {
     name: string
     description: string
-    compatibleDiets?: string[]
-    orderDeadline?: string    // "HH:mm:ss"
+    compatibleDiets: string[]   // backend expects this exact field name
+    orderDeadline?: string      // "HH:mm:ss"
 }
 
 export interface MealFormData {
     name: string
     description: string
     mealType: MealType
-    compatibleDiets: string[]  //  Match backend field name
+    compatibleDiets: string[]
     orderDeadline?: string
 }
 
@@ -60,12 +61,35 @@ interface Notification {
     type: NotificationType
 }
 
+const MEAL_TYPES: MealType[] = [
+    'CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT',
+    'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'
+]
+
+const MEAL_TYPE_LABELS: Record<MealType, string> = {
+    CEREAL:         'Cereal',
+    BREAKFAST:      'Breakfast',
+    LUNCH:          'Lunch',
+    LUNCH_DESSERT:  'Lunch Dessert',
+    THREE_PM_TEAS:  '3PM Teas',
+    DINNER:         'Dinner',
+    DINNER_DESSERT: 'Dinner Dessert',
+}
+
+const DIETARY_OPTIONS = [
+    'NORMAL', 'DIABETIC', 'VEGAN', 'VEGETARIAN',
+    'LOW_SODIUM', 'GLUTEN_FREE', 'NUT_ALLERGY'
+]
+
 // ============ Main Component ============
 export default function MenuManagement() {
     const [meals, setMeals] = useState<Meal[]>([])
-    const [dailyMenus, setDailyMenus] = useState<DailyMenuDTO[]>([])  //  Match backend structure
-    const [selectedDate, setSelectedDate] = useState(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0])
-    const [selectedMealType, setSelectedMealType] = useState<'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'>('LUNCH')
+    const [dailyMenus, setDailyMenus] = useState<DailyMenuDTO[]>([])
+    const [selectedDate, setSelectedDate] = useState(
+        new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+            .toISOString().split('T')[0]
+    )
+    const [selectedMealType, setSelectedMealType] = useState<MealType>('LUNCH')
     const [showMealModal, setShowMealModal] = useState(false)
     const [showMenuModal, setShowMenuModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>(null)
@@ -74,7 +98,6 @@ export default function MenuManagement() {
     const [notification, setNotification] = useState<Notification | null>(null)
     const [editingMealId, setEditingMealId] = useState<number | null>(null)
 
-    // Form state
     const [formData, setFormData] = useState<MealFormData>({
         name: '',
         description: '',
@@ -83,13 +106,13 @@ export default function MenuManagement() {
         orderDeadline: '',
     })
 
-    // Show notification toast
     const showNotification = (message: string, type: NotificationType) => {
         setNotification({ message, type })
         setTimeout(() => setNotification(null), 4000)
     }
 
-    //  Fetch meals from backend - GET /api/meals
+    // ── API calls ────────────────────────────────────────────────────────────────
+
     const fetchMeals = async () => {
         try {
             const response = await api.get<Meal[]>('/meals')
@@ -101,32 +124,26 @@ export default function MenuManagement() {
         }
     }
 
-    // Fetch daily menu for selected date - GET /api/staff/menu?date=...
     const fetchDailyMenu = async (date: string) => {
         try {
             const response = await api.get<DailyMenuDTO[]>('/staff/menu', { params: { date } })
             setDailyMenus(response.data || [])
         } catch (err: any) {
-            const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch daily menu'
-            // 403 is expected if user doesn't have STAFF/KITCHEN_STAFF role
             if (err.response?.status === 403) {
                 showNotification('Access denied: Staff role required', 'error')
             } else {
+                const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch daily menu'
                 showNotification(errorMessage, 'error')
             }
             console.error('Error fetching daily menu:', err)
         }
     }
 
-    // Load data on mount and when date changes
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true)
             try {
-                await Promise.all([
-                    fetchMeals(),
-                    fetchDailyMenu(selectedDate)
-                ])
+                await Promise.all([fetchMeals(), fetchDailyMenu(selectedDate)])
             } finally {
                 setIsLoading(false)
             }
@@ -134,13 +151,15 @@ export default function MenuManagement() {
         loadData()
     }, [selectedDate])
 
-    // Handle form input changes
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    // ── Form handlers ────────────────────────────────────────────────────────────
+
+    const handleInputChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    ) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
-    // Handle checkbox changes for dietary types (compatibleDiets)
     const handleDietaryChange = (diet: string) => {
         setFormData(prev => ({
             ...prev,
@@ -150,21 +169,15 @@ export default function MenuManagement() {
         }))
     }
 
-    // Open modal for creating new meal
+    // ── Modal helpers ────────────────────────────────────────────────────────────
+
     const handleCreateMeal = () => {
         setModalMode('create')
         setEditingMealId(null)
-        setFormData({
-            name: '',
-            description: '',
-            mealType: 'LUNCH',
-            compatibleDiets: [],
-            orderDeadline: '',
-        })
+        setFormData({ name: '', description: '', mealType: 'LUNCH', compatibleDiets: [], orderDeadline: '' })
         setShowMealModal(true)
     }
 
-    // Open modal for editing meal
     const handleEditMeal = (meal: Meal) => {
         setModalMode('edit')
         setEditingMealId(meal.id)
@@ -173,18 +186,18 @@ export default function MenuManagement() {
             description: meal.description,
             mealType: meal.mealType,
             compatibleDiets: meal.compatibleDiets || [],
-            orderDeadline: meal.orderDeadline || '',
+            orderDeadline: meal.orderDeadline
+                ? meal.orderDeadline.substring(0, 5)   // "HH:mm:ss" → "HH:mm" for <input type="time">
+                : '',
         })
         setShowMealModal(true)
     }
 
-    // Open modal for adding to daily menu
     const handleAddToMenuModal = () => {
         setModalMode('add-to-menu')
         setShowMenuModal(true)
     }
 
-    // Close modals
     const handleCloseMealModal = () => {
         setShowMealModal(false)
         setModalMode(null)
@@ -196,61 +209,46 @@ export default function MenuManagement() {
         setModalMode(null)
     }
 
-    //  Handle meal form submission (Create or Update) - POST/PUT /api/meals
+    // ── Create / Update meal (catalog) ───────────────────────────────────────────
+
     const handleSubmitMeal = async (e: React.FormEvent) => {
         e.preventDefault()
         setIsSubmitting(true)
 
         try {
-            //  Validate form data
             if (!formData.name.trim()) {
                 showNotification('Meal name is required', 'error')
-                setIsSubmitting(false)
                 return
             }
-
             if (formData.name.length > 255) {
                 showNotification('Meal name must be 255 characters or less', 'error')
-                setIsSubmitting(false)
                 return
             }
-
             if (!formData.description.trim()) {
                 showNotification('Description is required', 'error')
-                setIsSubmitting(false)
                 return
             }
-
             if (formData.description.length > 5000) {
                 showNotification('Description must be 5000 characters or less', 'error')
-                setIsSubmitting(false)
                 return
             }
 
-            //  Map frontend field names to backend expectations
+            // Matches backend MealRequest exactly
             const payload = {
                 name: formData.name.trim(),
                 description: formData.description.trim(),
                 mealType: formData.mealType,
-                mealDate: selectedDate,                      // Backend requires mealDate (YYYY-MM-DD format)
-                compatibleDiets: formData.compatibleDiets,  //  Backend expects this field name as Set<DietaryType>
-                // Note: orderDeadline is NOT part of MealRequest
+                mealDate: selectedDate,
+                compatibleDiets: formData.compatibleDiets,   // backend: Set<DietaryType>
             }
 
-            console.log('Submitting meal with payload:', JSON.stringify(payload, null, 2))
-            console.log('Form data:', formData)
-            console.log('Selected date:', selectedDate)
-            console.log('Compatible diets type:', typeof formData.compatibleDiets, formData.compatibleDiets)
+            console.debug('Submitting meal payload:', payload)
 
             if (modalMode === 'create') {
-                // POST /api/meals
-                const response = await api.post<Meal>('/meals', payload)
-                console.log('Meal created successfully:', response.data)
+                await api.post<Meal>('/meals', payload)
                 showNotification('Meal created successfully', 'success')
             } else if (modalMode === 'edit' && editingMealId) {
-                // PUT /api/meals/{id}
-                const response = await api.put<Meal>(`/meals/${editingMealId}`, payload)
-                console.log('Meal updated successfully:', response.data)
+                await api.put<Meal>(`/meals/${editingMealId}`, payload)
                 showNotification('Meal updated successfully', 'success')
             }
 
@@ -258,34 +256,35 @@ export default function MenuManagement() {
             handleCloseMealModal()
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to save meal'
-            const fullErrorData = err.response?.data
-            console.log('Full error response:', fullErrorData)
-            console.log('Error status:', err.response?.status)
+            console.error('Full error response:', err.response?.data)
             showNotification(errorMessage, 'error')
-            console.error('Error saving meal:', err)
         } finally {
             setIsSubmitting(false)
         }
     }
 
-    //  Handle adding meal to daily menu - POST /api/staff/menu
+    // ── Add catalog meal to daily menu ───────────────────────────────────────────
+    //
+    // The backend DailyMenuRequest.MealItemRequest takes:
+    //   name, description, compatibleDiets, orderDeadline
+    // We copy these directly from the catalog meal so diet info is preserved.
+
     const handleAddToDailyMenu = async (meal: Meal) => {
         try {
-            // Build request matching backend DailyMenuRequest
             const payload: DailyMenuRequest = {
                 menuDate: selectedDate,
-                mealType: selectedMealType,  // User selects meal type
+                mealType: selectedMealType,
                 meals: [{
                     name: meal.name,
                     description: meal.description,
-                    compatibleDiets: meal.compatibleDiets || [],
-                    orderDeadline: meal.orderDeadline,
+                    compatibleDiets: meal.compatibleDiets || [],   // ← preserve diets
+                    orderDeadline: meal.orderDeadline,             // "HH:mm:ss" or undefined
                 }]
             }
 
-            console.log('Adding to menu:', payload)
+            console.debug('Adding to daily menu:', payload)
             await api.post<DailyMenuDTO>('/staff/menu', payload)
-            showNotification(`${meal.name} added to ${selectedMealType} menu`, 'success')
+            showNotification(`"${meal.name}" added to ${MEAL_TYPE_LABELS[selectedMealType]} menu`, 'success')
             await fetchDailyMenu(selectedDate)
             handleCloseMenuModal()
         } catch (err: any) {
@@ -295,28 +294,26 @@ export default function MenuManagement() {
         }
     }
 
-    //  Handle removing meal from daily menu - DELETE /api/staff/menu/meals/{mealId}
+    // ── Remove from daily menu ───────────────────────────────────────────────────
+
     const handleRemoveFromMenu = async (mealId: number) => {
         if (!window.confirm('Remove this meal from the menu?')) return
-
         try {
-            //  Correct endpoint: /api/staff/menu/meals/{mealId}
             await api.delete(`/staff/menu/meals/${mealId}`)
             showNotification('Meal removed from menu', 'info')
             await fetchDailyMenu(selectedDate)
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to remove meal'
             showNotification(errorMessage, 'error')
-            console.error('Error removing from menu:', err)
         }
     }
 
-    //  Handle toggling meal availability - PATCH /api/meals/{id}/toggle-availability
-    const handleToggleAvailability = async (mealId: number, currentStatus: boolean) => {
+    // ── Toggle availability (active flag) ────────────────────────────────────────
+
+    const handleToggleAvailability = async (mealId: number, currentActive: boolean) => {
         try {
-            //  Use correct endpoint and method
             await api.patch<Meal>(`/meals/${mealId}/toggle-availability`, {
-                isActive: !currentStatus
+                isActive: !currentActive
             })
             showNotification('Availability updated', 'success')
             await Promise.all([fetchMeals(), fetchDailyMenu(selectedDate)])
@@ -324,15 +321,13 @@ export default function MenuManagement() {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to update availability'
             showNotification(errorMessage, 'error')
             console.error('Error toggling availability:', err)
-            // Revert optimistic update on error
-            await fetchDailyMenu(selectedDate)
         }
     }
 
-    //  Handle deactivating a meal - DELETE /api/meals/{id} (soft delete)
+    // ── Deactivate / reactivate catalog meal ─────────────────────────────────────
+
     const handleDeactivateMeal = async (mealId: number) => {
         if (!window.confirm('Deactivate this meal? It will no longer appear in the catalog.')) return
-
         try {
             await api.delete(`/meals/${mealId}`)
             showNotification('Meal deactivated', 'info')
@@ -340,11 +335,9 @@ export default function MenuManagement() {
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to deactivate meal'
             showNotification(errorMessage, 'error')
-            console.error('Error deactivating meal:', err)
         }
     }
 
-    //  Handle reactivating a meal - PATCH /api/meals/{id}/activate
     const handleReactivateMeal = async (mealId: number) => {
         try {
             await api.patch<Meal>(`/meals/${mealId}/activate`)
@@ -353,11 +346,21 @@ export default function MenuManagement() {
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to reactivate meal'
             showNotification(errorMessage, 'error')
-            console.error('Error reactivating meal:', err)
         }
     }
 
-    // Format date for display
+    // ── Refresh ──────────────────────────────────────────────────────────────────
+
+    const handleRefresh = () => {
+        setIsLoading(true)
+        Promise.all([fetchMeals(), fetchDailyMenu(selectedDate)]).finally(() => {
+            setIsLoading(false)
+            showNotification('Data refreshed', 'info')
+        })
+    }
+
+    // ── Display helpers ──────────────────────────────────────────────────────────
+
     const formatDate = (dateString: string) => {
         const localDateString = dateString.includes('T') ? dateString : `${dateString}T00:00:00`
         return new Date(localDateString).toLocaleDateString('en-US', {
@@ -365,7 +368,6 @@ export default function MenuManagement() {
         })
     }
 
-    // Format time for display
     const formatTime = (timeString?: string) => {
         if (!timeString) return ''
         const time = timeString.length > 5 ? timeString.substring(0, 5) : timeString
@@ -374,23 +376,18 @@ export default function MenuManagement() {
         })
     }
 
-    // Manual refresh handler
-    const handleRefresh = () => {
-        setIsLoading(true)
-        Promise.all([
-            fetchMeals(),
-            fetchDailyMenu(selectedDate)
-        ]).finally(() => {
-            setIsLoading(false)
-            showNotification('Data refreshed', 'info')
-        })
+    // Jackson serializes isActive as "active" — normalise here for safety
+    const isActive = (meal: Meal): boolean =>
+        typeof (meal as any).isActive === 'boolean'
+            ? (meal as any).isActive
+            : meal.active
+
+    const getMealsForType = (): Meal[] => {
+        const menuForType = dailyMenus.find(m => m.mealType === selectedMealType)
+        return menuForType?.items || []
     }
 
-    // Get meals for selected meal type from daily menu
-    const getMealsForType = () => {
-        const menuForDate = dailyMenus.find(m => m.mealType === selectedMealType)
-        return menuForDate?.items || []
-    }
+    // ── Render ───────────────────────────────────────────────────────────────────
 
     return (
         <div className="menu-management">
@@ -426,36 +423,30 @@ export default function MenuManagement() {
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]}
+                    min={new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)
+                        .toISOString().split('T')[0]}
                 />
                 <span className="date-display">{formatDate(selectedDate)}</span>
             </div>
 
             {/* Meal Type Tabs */}
             <div className="meal-type-tabs">
-                {(['CEREAL', 'BREAKFAST', 'LUNCH', 'LUNCH_DESSERT', 'THREE_PM_TEAS', 'DINNER', 'DINNER_DESSERT'] as const).map(type => (
+                {MEAL_TYPES.map(type => (
                     <button
                         key={type}
                         className={`tab-btn ${selectedMealType === type ? 'active' : ''}`}
                         onClick={() => setSelectedMealType(type)}
                         type="button"
                     >
-                        {type === 'CEREAL' ? 'Cereal' :
-                         type === 'BREAKFAST' ? 'Breakfast' :
-                         type === 'LUNCH' ? 'Lunch' :
-                         type === 'LUNCH_DESSERT' ? 'Lunch_Dessert' :
-                         type === 'THREE_PM_TEAS' ? 'Three_pm_teas' :
-                         type === 'DINNER' ? 'Dinner' :
-                         type === 'DINNER_DESSERT' ? 'Dinner_Dessert' :
-                         type.charAt(0) + type.slice(1).toLowerCase()}
+                        {MEAL_TYPE_LABELS[type]}
                     </button>
                 ))}
             </div>
 
             <div className="menu-sections">
-                {/* Today's Menu Section */}
+                {/* Today's Menu */}
                 <div className="section-card">
-                    <h2>{selectedMealType} Menu for {formatDate(selectedDate)}</h2>
+                    <h2>{MEAL_TYPE_LABELS[selectedMealType]} Menu for {formatDate(selectedDate)}</h2>
                     {isLoading ? (
                         <div className="loading-state">
                             <div className="spinner-large"></div>
@@ -463,7 +454,7 @@ export default function MenuManagement() {
                         </div>
                     ) : getMealsForType().length === 0 ? (
                         <div className="no-data">
-                            <p>No meals added for {selectedMealType.toLowerCase()} on {formatDate(selectedDate)}</p>
+                            <p>No meals added for {MEAL_TYPE_LABELS[selectedMealType].toLowerCase()} on {formatDate(selectedDate)}</p>
                             <button className="btn-primary" onClick={handleAddToMenuModal} type="button">
                                 <FiPlus /> Add Meals
                             </button>
@@ -476,23 +467,27 @@ export default function MenuManagement() {
                                         <h3>{meal.name}</h3>
                                         <p>{meal.description}</p>
                                         <div className="menu-item-meta">
-                      <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
-                        {meal.mealType}
-                      </span>
+                                            <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
+                                                {MEAL_TYPE_LABELS[meal.mealType]}
+                                            </span>
                                             {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
                                                 <span className="diet-badges">
-                          {meal.compatibleDiets.slice(0, 3).map(diet => (
-                              <span key={diet} className="diet-badge">{diet.replace('_', ' ')}</span>
-                          ))}
+                                                    {meal.compatibleDiets.slice(0, 3).map(diet => (
+                                                        <span key={diet} className="diet-badge">
+                                                            {diet.replace(/_/g, ' ')}
+                                                        </span>
+                                                    ))}
                                                     {meal.compatibleDiets.length > 3 && (
-                                                        <span className="diet-badge more">+{meal.compatibleDiets.length - 3}</span>
+                                                        <span className="diet-badge more">
+                                                            +{meal.compatibleDiets.length - 3}
+                                                        </span>
                                                     )}
-                        </span>
+                                                </span>
                                             )}
                                             {meal.orderDeadline && (
                                                 <span className="deadline-badge">
-                          <FiCalendar /> Closes: {formatTime(meal.orderDeadline)}
-                        </span>
+                                                    <FiCalendar /> Closes: {formatTime(meal.orderDeadline)}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -500,11 +495,13 @@ export default function MenuManagement() {
                                         <label className="toggle-switch">
                                             <input
                                                 type="checkbox"
-                                                checked={meal.isActive}
-                                                onChange={() => handleToggleAvailability(meal.id, meal.isActive)}
+                                                checked={isActive(meal)}
+                                                onChange={() => handleToggleAvailability(meal.id, isActive(meal))}
                                             />
                                             <span className="toggle-slider"></span>
-                                            <span className="toggle-label">{meal.isActive ? 'Available' : 'Unavailable'}</span>
+                                            <span className="toggle-label">
+                                                {isActive(meal) ? 'Available' : 'Unavailable'}
+                                            </span>
                                         </label>
                                         <button
                                             className="btn-icon danger"
@@ -521,7 +518,7 @@ export default function MenuManagement() {
                     )}
                 </div>
 
-                {/* Meal Catalog Section */}
+                {/* Meal Catalog */}
                 <div className="section-card">
                     <h2>Meal Catalog</h2>
                     {isLoading ? (
@@ -539,34 +536,36 @@ export default function MenuManagement() {
                     ) : (
                         <div className="meals-grid">
                             {meals.map((meal) => (
-                                <div key={meal.id} className={`meal-card ${!meal.isActive ? 'inactive' : ''}`}>
+                                <div key={meal.id} className={`meal-card ${!isActive(meal) ? 'inactive' : ''}`}>
                                     <div className="meal-card-info">
                                         <h3>{meal.name}</h3>
                                         <p>{meal.description}</p>
                                         <div className="meal-card-meta">
-                      <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
-                        {meal.mealType}
-                      </span>
+                                            <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
+                                                {MEAL_TYPE_LABELS[meal.mealType]}
+                                            </span>
                                             {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
                                                 <span className="diet-badges">
-                          {meal.compatibleDiets.slice(0, 2).map(diet => (
-                              <span key={diet} className="diet-badge small">{diet.replace('_', ' ')}</span>
-                          ))}
-                        </span>
+                                                    {meal.compatibleDiets.slice(0, 2).map(diet => (
+                                                        <span key={diet} className="diet-badge small">
+                                                            {diet.replace(/_/g, ' ')}
+                                                        </span>
+                                                    ))}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
                                     <div className="meal-card-actions">
                                         <button
                                             className="btn-icon"
-                                            title={meal.isActive ? "Edit" : "View"}
-                                            onClick={() => meal.isActive && handleEditMeal(meal)}
-                                            disabled={!meal.isActive}
+                                            title={isActive(meal) ? 'Edit' : 'View'}
+                                            onClick={() => isActive(meal) && handleEditMeal(meal)}
+                                            disabled={!isActive(meal)}
                                             type="button"
                                         >
                                             <FiEdit />
                                         </button>
-                                        {meal.isActive ? (
+                                        {isActive(meal) ? (
                                             <button
                                                 className="btn-icon danger"
                                                 title="Deactivate"
@@ -593,7 +592,7 @@ export default function MenuManagement() {
                 </div>
             </div>
 
-            {/* Add/Edit Meal Modal */}
+            {/* Add / Edit Meal Modal */}
             {showMealModal && (
                 <div className="modal-overlay" onClick={handleCloseMealModal}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -641,13 +640,11 @@ export default function MenuManagement() {
                                         required
                                         disabled={isSubmitting}
                                     >
-                                        <option value="CEREAL">Cereal</option>
-                                        <option value="BREAKFAST">Breakfast</option>
-                                        <option value="LUNCH">Lunch</option>
-                                        <option value="LUNCH_DESSERT">Lunch Dessert</option>
-                                        <option value="THREE_PM_TEAS">3PM Teas</option>
-                                        <option value="DINNER">Dinner</option>
-                                        <option value="DINNER_DESSERT">Dinner Dessert</option>
+                                        {MEAL_TYPES.map(type => (
+                                            <option key={type} value={type}>
+                                                {MEAL_TYPE_LABELS[type]}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="form-group">
@@ -666,7 +663,7 @@ export default function MenuManagement() {
                             <div className="form-group">
                                 <label>Compatible Diets</label>
                                 <div className="checkbox-group">
-                                    {['NORMAL', 'DIABETIC', 'VEGAN', 'VEGETARIAN', 'LOW_SODIUM', 'GLUTEN_FREE', 'NUT_ALLERGY'].map(diet => (
+                                    {DIETARY_OPTIONS.map(diet => (
                                         <label key={diet} className="checkbox-label">
                                             <input
                                                 type="checkbox"
@@ -674,7 +671,7 @@ export default function MenuManagement() {
                                                 onChange={() => handleDietaryChange(diet)}
                                                 disabled={isSubmitting}
                                             />
-                                            <span>{diet.replace('_', ' ')}</span>
+                                            <span>{diet.replace(/_/g, ' ')}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -689,21 +686,11 @@ export default function MenuManagement() {
                                 >
                                     Cancel
                                 </button>
-                                <button
-                                    type="submit"
-                                    className="btn-primary"
-                                    disabled={isSubmitting}
-                                >
+                                <button type="submit" className="btn-primary" disabled={isSubmitting}>
                                     {isSubmitting ? (
-                                        <>
-                                            <span className="spinner-small"></span>
-                                            Saving...
-                                        </>
+                                        <><span className="spinner-small"></span> Saving...</>
                                     ) : (
-                                        <>
-                                            <FiSave />
-                                            {modalMode === 'create' ? 'Add Meal' : 'Update Meal'}
-                                        </>
+                                        <><FiSave /> {modalMode === 'create' ? 'Add Meal' : 'Update Meal'}</>
                                     )}
                                 </button>
                             </div>
@@ -717,8 +704,8 @@ export default function MenuManagement() {
                 <div className="modal-overlay" onClick={handleCloseMenuModal}>
                     <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h2>Add Meal to {selectedMealType} Menu</h2>
-                            <p className="modal-subtitle">Select meals to add for {formatDate(selectedDate)}</p>
+                            <h2>Add Meal to {MEAL_TYPE_LABELS[selectedMealType]} Menu</h2>
+                            <p className="modal-subtitle">Select a meal to add for {formatDate(selectedDate)}</p>
                             <button className="modal-close" onClick={handleCloseMenuModal} type="button">
                                 <FiX />
                             </button>
@@ -729,32 +716,31 @@ export default function MenuManagement() {
                             <label>Meal Type:</label>
                             <select
                                 value={selectedMealType}
-                                onChange={(e) => setSelectedMealType(e.target.value as any)}
+                                onChange={(e) => setSelectedMealType(e.target.value as MealType)}
                                 disabled={isSubmitting}
                             >
-                                <option value="CEREAL">Cereal</option>
-                                <option value="BREAKFAST">Breakfast</option>
-                                <option value="LUNCH">Lunch</option>
-                                <option value="LUNCH_DESSERT">Lunch Dessert</option>
-                                <option value="THREE_PM_TEAS">3PM Teas</option>
-                                <option value="DINNER">Dinner</option>
-                                <option value="DINNER_DESSERT">Dinner Dessert</option>
+                                {MEAL_TYPES.map(type => (
+                                    <option key={type} value={type}>
+                                        {MEAL_TYPE_LABELS[type]}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
-                        {meals.filter(m => m.isActive).length === 0 ? (
+                        {meals.filter(m => isActive(m)).length === 0 ? (
                             <div className="no-data">
                                 <p>No active meals available</p>
-                                <button className="btn-secondary" onClick={() => {
-                                    handleCloseMenuModal()
-                                    handleCreateMeal()
-                                }} type="button">
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => { handleCloseMenuModal(); handleCreateMeal() }}
+                                    type="button"
+                                >
                                     Create a Meal First
                                 </button>
                             </div>
                         ) : (
                             <div className="meal-selection-grid">
-                                {meals.filter((m) => m.isActive).map((meal) => (
+                                {meals.filter(m => isActive(m)).map((meal) => (
                                     <div
                                         key={meal.id}
                                         className="meal-selection-card"
@@ -771,21 +757,28 @@ export default function MenuManagement() {
                                         <div className="selection-card-header">
                                             <h3>{meal.name}</h3>
                                             <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
-                        {meal.mealType}
-                      </span>
+                                                {MEAL_TYPE_LABELS[meal.mealType]}
+                                            </span>
                                         </div>
                                         <p>{meal.description}</p>
                                         {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
                                             <div className="selection-diets">
                                                 {meal.compatibleDiets.slice(0, 2).map(diet => (
-                                                    <span key={diet} className="diet-badge small">{diet.replace('_', ' ')}</span>
+                                                    <span key={diet} className="diet-badge small">
+                                                        {diet.replace(/_/g, ' ')}
+                                                    </span>
                                                 ))}
+                                                {meal.compatibleDiets.length > 2 && (
+                                                    <span className="diet-badge small">
+                                                        +{meal.compatibleDiets.length - 2} more
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                         {meal.orderDeadline && (
                                             <span className="deadline-small">
-                        Order by: {formatTime(meal.orderDeadline)}
-                      </span>
+                                                Order by: {formatTime(meal.orderDeadline)}
+                                            </span>
                                         )}
                                     </div>
                                 ))}

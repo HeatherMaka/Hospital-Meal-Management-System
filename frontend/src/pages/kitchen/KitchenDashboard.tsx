@@ -15,7 +15,7 @@ export interface AnalyticsDTO {
     date: string
     totalOrders: number
     pendingOrders: number
-    confirmedOrders: number
+    readyOrders: number
     preparingOrders: number
     deliveredOrders: number
     cancelledOrders: number
@@ -28,7 +28,7 @@ export interface AnalyticsDTO {
 
 export interface DashboardStats {
     pendingOrders: number
-    confirmedOrders: number
+    readyOrders: number
     preparingOrders: number
     deliveredOrders: number
     specialRequests: number
@@ -39,7 +39,7 @@ export default function KitchenDashboard() {
     const navigate = useNavigate()
     const [stats, setStats] = useState<DashboardStats>({
         pendingOrders: 0,
-        confirmedOrders: 0,
+        readyOrders: 0,
         preparingOrders: 0,
         deliveredOrders: 0,
         specialRequests: 0,
@@ -48,23 +48,23 @@ export default function KitchenDashboard() {
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
     const [error, setError] = useState<string | null>(null)
 
-    //  Fetch dashboard analytics from backend - GET /api/staff/analytics?date=...
+    // Fetch dashboard analytics from backend - GET /api/staff/analytics?date=...
     const fetchDashboardData = async () => {
         try {
             setIsLoading(true)
             setError(null)
             const today = new Date().toISOString().split('T')[0]
 
-            //  Fetch analytics summary using shared api helper
+            // Fetch analytics summary using shared api helper
             const response = await api.get<AnalyticsDTO>('/staff/analytics', {
                 params: { date: today }
             })
             const analytics = response.data
 
-            //  Map backend AnalyticsDTO to frontend DashboardStats
+            // Map backend AnalyticsDTO to frontend DashboardStats
             setStats({
                 pendingOrders: analytics.pendingOrders ?? 0,
-                confirmedOrders: analytics.confirmedOrders ?? 0,
+                readyOrders: analytics.readyOrders ?? 0,
                 preparingOrders: analytics.preparingOrders ?? 0,
                 deliveredOrders: analytics.deliveredOrders ?? 0,
                 specialRequests: analytics.specialRequestCount ?? 0,
@@ -84,7 +84,7 @@ export default function KitchenDashboard() {
             // Set default zeros on error
             setStats({
                 pendingOrders: 0,
-                confirmedOrders: 0,
+                readyOrders: 0,
                 preparingOrders: 0,
                 deliveredOrders: 0,
                 specialRequests: 0,
@@ -113,7 +113,7 @@ export default function KitchenDashboard() {
         })
     }
 
-    //  Stat card configuration - match backend status names
+    // Stat card configuration - match backend status names
     const statCards = [
         {
             title: 'Pending Orders',
@@ -123,11 +123,11 @@ export default function KitchenDashboard() {
             route: '/kitchen/orders?status=PENDING'
         },
         {
-            title: 'Confirmed',    //  Changed from "Preparing" to match workflow
-            value: stats.confirmedOrders,  //  Use confirmedOrders
-            icon: FiAlertCircle,   //  Different icon for CONFIRMED
+            title: 'Ready',
+            value: stats.readyOrders,
+            icon: FiAlertCircle,
             color: 'blue',
-            route: '/kitchen/orders?status=CONFIRMED'  //  Correct status param
+            route: '/kitchen/orders?status=READY'
         },
         {
             title: 'Preparing',

@@ -22,7 +22,7 @@ export interface Order {
     orderDate: string           // ISO date "YYYY-MM-DD" (backend field name)
     quantity: number
     specialRequest?: string | null
-    status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'  //  Use CONFIRMED not READY
+    status: 'PENDING' | 'READY' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
     orderedAt: string           // ISO datetime (backend: createdAt)
     updatedAt?: string
 }
@@ -52,7 +52,7 @@ export default function OrderView() {
         setTimeout(() => setNotification(null), 4000)
     }
 
-    //  Fetch orders from backend - GET /api/staff/orders?date=...&mealType=...
+    // Fetch orders from backend - GET /api/staff/orders?date=...&mealType=...
     const fetchOrders = useCallback(async (date: string, mealType?: string) => {
         try {
             setIsLoading(true)
@@ -109,13 +109,13 @@ export default function OrderView() {
         setFilteredOrders(filtered)
     }, [orders, selectedStatus, searchTerm])
 
-    //  Handle status update - PATCH /api/staff/orders/{id}/status?status=...
+    // Handle status update - PATCH /api/staff/orders/{id}/status?status=...
     const handleStatusUpdate = async (orderId: number, newStatus: Order['status']) => {
         if (isUpdating !== null) return // Prevent double-clicks
 
         setIsUpdating(orderId)
         try {
-            //  Correct endpoint with query param
+            // Correct endpoint with query param
             await api.patch<Order>(`/staff/orders/${orderId}/status`, null, {
                 params: { status: newStatus }
             })
@@ -157,7 +157,7 @@ export default function OrderView() {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'PENDING': return <FiClock />
-            case 'CONFIRMED': return <FiAlertCircle />  //  Use CONFIRMED
+            case 'READY': return <FiAlertCircle />
             case 'PREPARING': return <FiPackage />
             case 'DELIVERED': return <FiCheckCircle />
             case 'CANCELLED': return <FiX />
@@ -165,11 +165,11 @@ export default function OrderView() {
         }
     }
 
-    // ✅ Get next valid status in workflow (use CONFIRMED not READY)
+    // Get next valid status in workflow
     const getNextStatus = (currentStatus: string): Order['status'] | null => {
         switch (currentStatus) {
-            case 'PENDING': return 'CONFIRMED'    //  Changed from READY
-            case 'CONFIRMED': return 'PREPARING'  //  Added this step
+            case 'PENDING': return 'READY'
+            case 'READY': return 'PREPARING'
             case 'PREPARING': return 'DELIVERED'
             default: return null
         }
@@ -193,7 +193,7 @@ export default function OrderView() {
     // Calculate summary counts from filtered orders
     const summaryCounts = {
         pending: filteredOrders.filter((o) => o.status === 'PENDING').length,
-        confirmed: filteredOrders.filter((o) => o.status === 'CONFIRMED').length,  //  Added
+        ready: filteredOrders.filter((o) => o.status === 'READY').length,
         preparing: filteredOrders.filter((o) => o.status === 'PREPARING').length,
         delivered: filteredOrders.filter((o) => o.status === 'DELIVERED').length,
     }
@@ -259,10 +259,10 @@ export default function OrderView() {
                             <option value="CEREAL">Cereal</option>
                             <option value="BREAKFAST">Breakfast</option>
                             <option value="LUNCH">Lunch</option>
-                            <option value="LUNCH_DESSERT">Lunch_Dessert</option>
-                            <option value="THREE_PM_TEAS">Three_pm_teas</option>
+                            <option value="LUNCH_DESSERT">Lunch Dessert</option>
+                            <option value="THREE_PM_TEAS">3PM Teas</option>
                             <option value="DINNER">Dinner</option>
-                            <option value="DINNER_DESSERT">Dinner_Dessert</option>
+                            <option value="DINNER_DESSERT">Dinner Dessert</option>
                         </select>
                     </div>
 
@@ -271,7 +271,7 @@ export default function OrderView() {
                         <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
                             <option value="ALL">All Status</option>
                             <option value="PENDING">Pending</option>
-                            <option value="CONFIRMED">Confirmed</option>  {/*  Added */}
+                            <option value="READY">Ready</option>  {/*  Changed from CONFIRMED to READY */}
                             <option value="PREPARING">Preparing</option>
                             <option value="DELIVERED">Delivered</option>
                             <option value="CANCELLED">Cancelled</option>
@@ -286,9 +286,9 @@ export default function OrderView() {
                     <h3>{isLoading ? '...' : summaryCounts.pending}</h3>
                     <p>Pending</p>
                 </div>
-                <div className="summary-card status-confirmed">  {/*  Added */}
-                    <h3>{isLoading ? '...' : summaryCounts.confirmed}</h3>
-                    <p>Confirmed</p>
+                <div className="summary-card status-ready">  {/*  Changed from status-confirmed to status-ready */}
+                    <h3>{isLoading ? '...' : summaryCounts.ready}</h3>
+                    <p>Ready</p>  {/* Changed from Confirmed to Ready */}
                 </div>
                 <div className="summary-card status-preparing">
                     <h3>{isLoading ? '...' : summaryCounts.preparing}</h3>
@@ -341,16 +341,15 @@ export default function OrderView() {
                                         <p className="patient-location">
                                             Ward {order.wardNumber} • Bed {order.bedNumber}
                                         </p>
-                                        {/*  Backend may send dietaryType via patient */}
                                         {order.specialRequest && (
                                             <span className="dietary-badge">
-                        <FiAlertCircle /> Special request
-                      </span>
+                                                <FiAlertCircle /> Special request
+                                            </span>
                                         )}
                                     </div>
                                     <div className={`order-status-badge ${order.status.toLowerCase()}`}>
                                         {getStatusIcon(order.status)}
-                                        <span>{order.status.replace('_', ' ')}</span>
+                                        <span>{order.status}</span>
                                     </div>
                                 </div>
 

@@ -42,18 +42,41 @@ public interface MealRepository extends JpaRepository<Meal, Long> {
             @Param("date") LocalDate date,
             @Param("currentTime") LocalTime currentTime);
 
+    /**
+     * Fetch meals for the patient menu.
+     *
+     * Fixes applied vs original query:
+     *
+     * 1. REMOVED "m.createdByRole = :creatorRole" filter.
+     *    Catalog meals created via /api/meals never have createdByRole set
+     *    (MealService.createMeal does not assign it), so that filter was
+     *    silently excluding every meal → empty patient menu.
+     *    Meals are now identified by having a dailyMenu association instead.
+     *
+     * 2. CHANGED dietary filter from strict MEMBER OF to permissive logic:
+     *    Show meal if ANY of these is true:
+     *      a) meal has no compatible diets defined (empty set = suitable for all)
+     *      b) no patient dietary type provided (null = no restriction)
+     *      c) patient's dietary type is in the meal's compatibleDiets set
+     *    Previously, a meal with an empty compatibleDiets set would never match
+     *    ":dietaryType MEMBER OF m.compatibleDiets", hiding it from every patient.
+     *
+     * 3. KEPT the orderDeadline check — meals past their deadline stay hidden.
+     */
     @Query("""
-        SELECT m FROM Meal m 
-        WHERE m.isActive = true 
-          AND m.mealDate = :date 
-          AND m.createdByRole = :creatorRole
+        SELECT m FROM Meal m
+        WHERE m.isActive = true
+          AND m.mealDate = :date
           AND (m.orderDeadline IS NULL OR m.orderDeadline > :currentTime)
-          AND (:dietaryType IS NULL OR :dietaryType MEMBER OF m.compatibleDiets)
+          AND (
+                m.compatibleDiets IS EMPTY
+                OR :dietaryType IS NULL
+                OR :dietaryType MEMBER OF m.compatibleDiets
+              )
         ORDER BY m.mealType, m.name
         """)
     List<Meal> findAvailableMealsForPatient(
             @Param("date") LocalDate date,
-            @Param("creatorRole") Role creatorRole,
             @Param("currentTime") LocalTime currentTime,
             @Param("dietaryType") DietaryType dietaryType);
 

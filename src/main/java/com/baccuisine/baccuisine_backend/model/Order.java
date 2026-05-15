@@ -1,6 +1,6 @@
-// src/main/java/com/baccuisine/baccuisine_backend/model/Order.java
 package com.baccuisine.baccuisine_backend.model;
 
+import com.baccuisine.baccuisine_backend.enums.MealType;
 import com.baccuisine.baccuisine_backend.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -28,9 +28,12 @@ public class Order {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
+    /**
+     * Direct reference to Meal — no longer goes through DailyMenu
+     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "daily_menu_id", nullable = false)
-    private DailyMenu dailyMenu;  // Links to DailyMenu (which has meal + menuDate)
+    @JoinColumn(name = "meal_id", nullable = false)
+    private Meal meal;
 
     private Integer quantity;
 
@@ -50,32 +53,23 @@ public class Order {
     // ============ HELPER METHODS ============
 
     /**
-     *  Get the meal directly from this order via DailyMenu
-     */
-    @Transient
-    public Meal getMeal() {
-        return dailyMenu != null ? dailyMenu.getMeal() : null;
-    }
-
-    /**
-     *  Get the order/serving date directly from DailyMenu
-     * FIXED: Use getMenuDate() not getDate() to match DailyMenu entity
+     * Get the order date from the linked meal's mealDate
      */
     @Transient
     public LocalDate getOrderDate() {
-        return dailyMenu != null ? dailyMenu.getMenuDate() : null;  // FIXED HERE
+        return meal != null ? meal.getMealDate() : null;
     }
 
     /**
-     *  Get meal type for this order
+     * Get meal type for this order
      */
     @Transient
-    public com.baccuisine.baccuisine_backend.enums.MealType getMealType() {
-        return dailyMenu != null ? dailyMenu.getMealType() : null;
+    public MealType getMealType() {
+        return meal != null ? meal.getMealType() : null;
     }
 
     /**
-     *  Check if this order is for today
+     * Check if this order is for today
      */
     @Transient
     public boolean isForToday() {
@@ -84,7 +78,7 @@ public class Order {
     }
 
     /**
-     *  Update timestamp when status changes
+     * Update timestamp when status changes
      */
     public void markUpdated() {
         this.updatedAt = LocalDateTime.now();

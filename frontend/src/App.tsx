@@ -1,4 +1,4 @@
-// src/App.tsx - FIXED VERSION
+// src/App.tsx - FINAL FIXED VERSION
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
@@ -19,14 +19,14 @@ import AdminLayout from './components/layout/AdminLayout'
 import KitchenLayout from './components/layout/KitchenLayout'
 import PatientLayout from './components/layout/PatientLayout'
 
-//  Helper: Get dashboard path by role
+// ============ Helper: Get dashboard path by role ============
 const getDashboardPath = (role: string): string => {
     if (role === 'ADMIN') return '/admin'
-    if (role === 'STAFF' || role === 'KITCHEN_STAFF') return '/kitchen' // Include KITCHEN_STAFF
+    if (role === 'STAFF' || role === 'KITCHEN_STAFF') return '/kitchen'
     return '/patient'
 }
 
-// Wrapper component for protected routes
+// ============ ProtectedRoute ============
 function ProtectedRoute({
                             children,
                             allowedRoles
@@ -37,93 +37,76 @@ function ProtectedRoute({
     const { user, isLoading } = useAuth()
     const location = useLocation()
 
-    console.log(' ProtectedRoute:', {
-        isLoading,
-        user: user?.username,
-        role: user?.role,
-        path: location.pathname,
-        allowedRoles
-    })
-
-    //  Wait for auth check
-    if (isLoading) {
-        return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef3c7' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#92400e', padding: '1rem', backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    ⏳ Loading...
-                </div>
-            </div>
-        )
+    // Debug logging (remove in production or wrap in env check)
+    if (import.meta.env?.DEV) {
+        console.log(' ProtectedRoute:', {
+            isLoading,
+            user: user?.username,
+            role: user?.role,
+            path: location.pathname,
+            allowedRoles
+        })
     }
 
-    //  Redirect to login if not authenticated
+    if (isLoading) {
+        return <LoadingScreen message="Verifying access..." />
+    }
+
     if (!user) {
-        console.log(' No user - redirecting to login')
+        if (import.meta.env?.DEV) console.log(' No user - redirecting to login')
         return <Navigate to="/login" replace state={{ from: location }} />
     }
 
-    //  Redirect if user role not allowed
     if (!allowedRoles.includes(user.role)) {
-        console.log(' Role not allowed:', user.role, 'Allowed:', allowedRoles)
+        if (import.meta.env?.DEV) console.log(' Role not allowed:', user.role, 'Allowed:', allowedRoles)
         const redirectPath = getDashboardPath(user.role)
 
-        //  Prevent redirect loop: only redirect if not already at target
         if (location.pathname === redirectPath) {
             return <>{children}</>
         }
-
         return <Navigate to={redirectPath} replace />
     }
 
     return <>{children}</>
 }
 
-//  Wrapper for public routes
+// ============ PublicRoute - FIXED ============
 function PublicRoute({ children }: { children: React.ReactNode }) {
     const { user, isLoading } = useAuth()
+    const location = useLocation()  //  ADDED: Was missing!
 
-    console.log('PublicRoute:', { isLoading, user: user?.username, role: user?.role })
+    if (import.meta.env?.DEV) {
+        console.log('🌐 PublicRoute:', { isLoading, user: user?.username, role: user?.role })
+    }
 
     if (isLoading) {
-        return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef3c7' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#92400e', padding: '1rem', backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                    ⏳ Loading...
-                </div>
-            </div>
-        )
+        return <LoadingScreen message="Loading..." />
     }
 
     if (user) {
-        console.log(' User authenticated - redirecting to dashboard')
+        if (import.meta.env?.DEV) console.log(' User authenticated - redirecting to dashboard')
         const redirectPath = getDashboardPath(user.role)
 
-        // Prevent redirect loop
         if (location.pathname === redirectPath) {
             return <>{children}</>
         }
-
         return <Navigate to={redirectPath} replace />
     }
 
     return <>{children}</>
 }
 
-//  Root redirect handler
+// ============ RootRedirect ============
 function RootRedirect() {
     const { user, isLoading } = useAuth()
     const location = useLocation()
 
-    console.log(' RootRedirect:', { isLoading, user: user?.username, role: user?.role, currentPath: location.pathname })
+    if (import.meta.env?.DEV) {
+        console.log(' RootRedirect:', { isLoading, user: user?.username, role: user?.role, currentPath: location.pathname })
+    }
 
     if (isLoading) {
-        return (
-            <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fef3c7' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#92400e', padding: '1rem', backgroundColor: 'white', borderRadius: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                     Loading...
-                </div>
-            </div>
-        )
+        return <LoadingScreen message="Initializing..." />
     }
 
     if (!user) {
@@ -132,28 +115,52 @@ function RootRedirect() {
 
     const redirectPath = getDashboardPath(user.role)
 
-    //  CRITICAL: Only redirect if not already at target path
     if (location.pathname === redirectPath || location.pathname.startsWith(`${redirectPath}/`)) {
-        return null // Already at correct destination
+        return null
     }
 
     return <Navigate to={redirectPath} replace />
 }
 
-//  Main app routes
+// ============ Reusable Loading Component ============
+function LoadingScreen({ message = "Loading..." }: { message?: string }) {
+    return (
+        <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: '#fef3c7'
+        }}>
+            <div style={{
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: '#92400e',
+                padding: '1rem',
+                backgroundColor: 'white',
+                borderRadius: '0.5rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+                ⏳ {message}
+            </div>
+        </div>
+    )
+}
+
+// ============ Main App Routes ============
 function AppRoutes() {
-    console.log(' AppRoutes rendering')
+    if (import.meta.env?.DEV) console.log(' AppRoutes rendering')
 
     return (
         <Routes>
-            {/*  Public Routes */}
+            {/* Public Routes */}
             <Route path="/login" element={
                 <PublicRoute>
                     <Login />
                 </PublicRoute>
             } />
 
-            {/*  Admin Routes */}
+            {/* Admin Routes */}
             <Route path="/admin" element={
                 <ProtectedRoute allowedRoles={['ADMIN']}>
                     <AdminLayout />
@@ -165,9 +172,9 @@ function AppRoutes() {
                 <Route path="analytics" element={<Analytics />} />
             </Route>
 
-            {/*  Kitchen Staff Routes - Accept STAFF, KITCHEN_STAFF, and ADMIN roles */}
+            {/* Kitchen Staff Routes */}
             <Route path="/kitchen" element={
-                <ProtectedRoute allowedRoles={['STAFF', 'KITCHEN_STAFF', 'ADMIN']}> {/*  Added ADMIN */}
+                <ProtectedRoute allowedRoles={['STAFF', 'KITCHEN_STAFF', 'ADMIN']}>
                     <KitchenLayout />
                 </ProtectedRoute>
             }>
@@ -177,7 +184,7 @@ function AppRoutes() {
                 <Route path="analytics" element={<KitchenAnalytics />} />
             </Route>
 
-            {/*  Patient Routes */}
+            {/* Patient Routes */}
             <Route path="/patient" element={
                 <ProtectedRoute allowedRoles={['PATIENT']}>
                     <PatientLayout />
@@ -188,7 +195,7 @@ function AppRoutes() {
                 <Route path="profile" element={<PatientProfile />} />
             </Route>
 
-            {/*  Root Redirect */}
+            {/* Root Redirect */}
             <Route path="/" element={<RootRedirect />} />
 
             {/* 404 Fallback */}
@@ -197,9 +204,9 @@ function AppRoutes() {
     )
 }
 
-// Main App component
+// ============ Main App Component ============
 function App() {
-    console.log(' App component mounting')
+    if (import.meta.env?.DEV) console.log(' App component mounting')
 
     return (
         <BrowserRouter

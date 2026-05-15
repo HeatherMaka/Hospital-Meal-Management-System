@@ -7,6 +7,7 @@ import com.baccuisine.baccuisine_backend.enums.MealType;
 import com.baccuisine.baccuisine_backend.service.MealService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.Map;
 @RequestMapping("/api/meals")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:5173")
+@Slf4j
 public class MealController {
 
     private final MealService mealService;
@@ -82,6 +84,31 @@ public class MealController {
             @Valid @RequestBody MealRequest request
     ) {
         return ResponseEntity.ok(mealService.updateMeal(id, request));
+    }
+
+    /**
+     * Toggle meal availability (activate/deactivate) - For kitchen staff
+     */
+    @PatchMapping("/{id}/toggle-availability")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'KITCHEN_STAFF')")
+    public ResponseEntity<MealDTO> toggleMealAvailability(@PathVariable Long id) {
+        log.info("Toggling availability for meal ID: {}", id);
+
+        MealDTO currentMeal = mealService.getMealById(id);
+
+        if (currentMeal.getActive()) {
+            // Deactivate the meal
+            mealService.deactivateMeal(id);
+            log.info("Meal {} deactivated", id);
+        } else {
+            // Reactivate the meal
+            mealService.reactivateMeal(id);
+            log.info("Meal {} reactivated", id);
+        }
+
+        // Return the updated meal
+        MealDTO updatedMeal = mealService.getMealById(id);
+        return ResponseEntity.ok(updatedMeal);
     }
 
     /**

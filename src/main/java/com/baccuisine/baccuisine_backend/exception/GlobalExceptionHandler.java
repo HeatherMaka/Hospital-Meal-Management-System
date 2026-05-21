@@ -166,18 +166,24 @@ public class GlobalExceptionHandler {
     // ============ VALIDATION ERRORS ============
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
         log.debug(" Validation failed: {} errors", ex.getErrorCount());
 
-        Map<String, String> errors = new HashMap<>();
+        Map<String, String> fieldErrors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
+            fieldErrors.put(fieldName, errorMessage);
         });
 
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Validation failed: " + String.join("; ", fieldErrors.values()));
+        body.put("fieldErrors", fieldErrors);
+        body.put("status", 400);
+        body.put("error", "Bad Request");
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     // ============ GENERIC ERRORS ============

@@ -834,7 +834,7 @@
     background: var(--color-warning-bg);
     color: var(--color-warning);
 }
-.badge-confirmed {
+.badge-ready {
     background: var(--color-primary-glow);
     color: var(--color-primary);
 }

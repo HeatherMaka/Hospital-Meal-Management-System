@@ -106,6 +106,7 @@ export default function MenuManagement() {
         orderDeadline: '',
     })
 
+
     const showNotification = (message: string, type: NotificationType) => {
         setNotification({ message, type })
         setTimeout(() => setNotification(null), 4000)
@@ -233,13 +234,17 @@ export default function MenuManagement() {
                 return
             }
 
-            // Matches backend MealRequest exactly
-            const payload = {
+            const payload: Record<string, any> = {
                 name: formData.name.trim(),
                 description: formData.description.trim(),
                 mealType: formData.mealType,
                 mealDate: selectedDate,
-                compatibleDiets: formData.compatibleDiets,   // backend: Set<DietaryType>
+                compatibleDiets: formData.compatibleDiets,
+            }
+            if (formData.orderDeadline) {
+                payload.orderDeadline = formData.orderDeadline.includes(':')
+                    ? `${formData.orderDeadline}:00`
+                    : formData.orderDeadline
             }
 
             console.debug('Submitting meal payload:', payload)
@@ -370,10 +375,7 @@ export default function MenuManagement() {
 
     const formatTime = (timeString?: string) => {
         if (!timeString) return ''
-        const time = timeString.length > 5 ? timeString.substring(0, 5) : timeString
-        return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', {
-            hour: '2-digit', minute: '2-digit'
-        })
+        return timeString.length > 5 ? timeString.substring(0, 5) : timeString
     }
 
     // Jackson serializes isActive as "active" — normalise here for safety

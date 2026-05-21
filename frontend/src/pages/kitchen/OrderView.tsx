@@ -115,10 +115,7 @@ export default function OrderView() {
 
         setIsUpdating(orderId)
         try {
-            // Correct endpoint with query param
-            await api.patch<Order>(`/staff/orders/${orderId}/status`, null, {
-                params: { status: newStatus }
-            })
+            await api.patch<Order>(`/staff/orders/${orderId}/status?status=${newStatus}`)
 
             showNotification(`Order #${orderId} marked as ${newStatus}`, 'success')
 
@@ -168,9 +165,9 @@ export default function OrderView() {
     // Get next valid status in workflow
     const getNextStatus = (currentStatus: string): Order['status'] | null => {
         switch (currentStatus) {
-            case 'PENDING': return 'READY'
-            case 'READY': return 'PREPARING'
-            case 'PREPARING': return 'DELIVERED'
+            case 'PENDING': return 'PREPARING'
+            case 'PREPARING': return 'READY'
+            case 'READY': return 'DELIVERED'
             default: return null
         }
     }
@@ -375,6 +372,11 @@ export default function OrderView() {
                                 </div>
 
                                 <div className="order-actions">
+                                    {order.status === 'PREPARING' && (
+                                        <span className="preparing-label">
+                                            <FiPackage /> Preparing...
+                                        </span>
+                                    )}
                                     {nextStatus && order.status !== 'CANCELLED' && (
                                         <button
                                             className="btn-status-update"
@@ -384,6 +386,8 @@ export default function OrderView() {
                                         >
                                             {isProcessing ? (
                                                 <span className="spinner-small"></span>
+                                            ) : order.status === 'READY' ? (
+                                                <>Mark as Delivered</>
                                             ) : (
                                                 <>Mark as {nextStatus}</>
                                             )}

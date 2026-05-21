@@ -37,6 +37,7 @@ public class Order {
 
     private Integer quantity;
 
+    @Column(length = 500)
     private String specialRequest;
 
     @Enumerated(EnumType.STRING)

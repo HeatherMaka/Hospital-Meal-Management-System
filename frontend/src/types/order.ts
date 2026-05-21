@@ -17,7 +17,8 @@ export interface Order {
 }
 
 export interface OrderRequest {
-    dailyMenuId: number
+    mealId: number
+    quantity?: number
     specialRequest?: string
 }
 

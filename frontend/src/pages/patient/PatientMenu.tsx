@@ -55,7 +55,7 @@ export interface OrderDTO {
     orderDate: string
     quantity: number
     specialRequest?: string
-    status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
+    status: 'PENDING' | 'READY' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
     orderedAt: string
     updatedAt?: string
 }
@@ -172,32 +172,39 @@ export default function PatientMenu() {
         }
 
         setIsSubmitting(true)
-        try {
-            // Send each order with 'mealId' field (not 'dailyMenuId')
-            for (const mealId of selectedMeals) {
+        let successCount = 0
+        let lastError = ''
+
+        for (const mealId of selectedMeals) {
+            try {
                 const order: OrderRequest = {
-                    mealId: mealId,  // ← Changed from dailyMenuId to mealId
+                    mealId: mealId,
                     quantity: 1,
                     specialRequest: specialRequest.trim() || undefined,
                 }
                 await api.post<OrderDTO>('/patient/orders', order)
+                successCount++
+            } catch (err: any) {
+                const msg = err.response?.data?.message || err.message || 'Failed to submit order'
+                lastError = msg
+                console.error(`Error submitting meal #${mealId}:`, msg)
             }
+        }
 
+        if (successCount > 0) {
             showNotification(
-                `Order submitted successfully! ${selectedMeals.length} meal(s) ordered.`,
-                'success'
+                `${successCount} meal(s) ordered successfully.` +
+                (successCount < selectedMeals.length ? ` ${selectedMeals.length - successCount} failed.` : ''),
+                lastError ? 'error' : 'success'
             )
             setSelectedMeals([])
             setSpecialRequest('')
             await fetchOrderHistory()
-
-        } catch (err: any) {
-            console.error('Error submitting order:', err)
-            const errorMessage = err.response?.data?.message || err.message || 'Failed to submit order'
-            showNotification(errorMessage, 'error')
-        } finally {
-            setIsSubmitting(false)
+        } else {
+            showNotification(lastError || 'Failed to submit order', 'error')
         }
+
+        setIsSubmitting(false)
     }
 
     const handleRefresh = (): void => {
@@ -214,10 +221,7 @@ export default function PatientMenu() {
 
     const formatTime = (timeString?: string): string => {
         if (!timeString) return ''
-        const time = timeString.length > 5 ? timeString.substring(0, 5) : timeString
-        return new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', {
-            hour: '2-digit', minute: '2-digit'
-        })
+        return timeString.length > 5 ? timeString.substring(0, 5) : timeString
     }
 
     const getMealTypeIcon = (mealType: string): string => {
@@ -249,7 +253,7 @@ export default function PatientMenu() {
     const getOrderStatusClass = (status: string): string => {
         const classes: Record<string, string> = {
             PENDING:   'badge-pending',
-            CONFIRMED: 'badge-confirmed',
+            READY:     'badge-ready',
             PREPARING: 'badge-preparing',
             DELIVERED: 'badge-delivered',
             CANCELLED: 'badge-cancelled',
@@ -285,7 +289,7 @@ export default function PatientMenu() {
             <div className="menu-header">
                 <div>
                     <h1>Welcome, {user?.fullName || user?.name || user?.username || 'Patient'}! </h1>
-                    <p className="header-subtitle">Select your meals from today's kitchen offerings</p>
+                    <p className="header-subtitle">Select your meals from the kitchen offerings</p>
                 </div>
                 <div className="header-actions">
                     <button

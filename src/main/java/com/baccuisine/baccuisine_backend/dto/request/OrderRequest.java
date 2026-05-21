@@ -1,25 +1,18 @@
 package com.baccuisine.baccuisine_backend.dto.request;
 
-import com.baccuisine.baccuisine_backend.enums.MealType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDate;
 
 /**
  * Request DTO for placing a new meal order
  * Used by: POST /api/patient/orders
  */
 @Data
-@Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class OrderRequest {
 
     /**
@@ -32,7 +25,6 @@ public class OrderRequest {
      * Quantity of this meal to order
      * Default: 1 | Range: 1-10
      */
-    @Builder.Default
     @Min(value = 1, message = "Quantity must be at least 1")
     @Max(value = 10, message = "Quantity cannot exceed 10 per order")
     private Integer quantity = 1;

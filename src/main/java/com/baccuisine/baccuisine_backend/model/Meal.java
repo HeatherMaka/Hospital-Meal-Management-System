@@ -62,6 +62,7 @@ public class Meal {
     private Long createdById;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private Role createdByRole;
 
     @CreatedDate
@@ -81,6 +82,7 @@ public class Meal {
     public boolean isCurrentlyOrderable() {
         if (!isActive) return false;
         if (orderDeadline == null) return true;
+        if (mealDate != null && mealDate.isAfter(LocalDate.now())) return true;
         return orderDeadline.isAfter(LocalTime.now());
     }
 

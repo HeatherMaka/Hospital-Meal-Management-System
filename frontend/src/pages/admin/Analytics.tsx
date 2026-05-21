@@ -178,14 +178,14 @@ export default function Analytics() {
         const statuses: Record<string, number> = {}
         analytics.forEach(item => {
             statuses['Pending'] = (statuses['Pending'] || 0) + item.pendingOrders
-            statuses['Confirmed'] = (statuses['Confirmed'] || 0) + item.confirmedOrders
+            statuses['Ready'] = (statuses['Ready'] || 0) + item.confirmedOrders
             statuses['Preparing'] = (statuses['Preparing'] || 0) + item.preparingOrders
             statuses['Delivered'] = (statuses['Delivered'] || 0) + item.deliveredOrders
             statuses['Cancelled'] = (statuses['Cancelled'] || 0) + item.cancelledOrders
         })
         setStatusData([
             { name: 'Pending', value: statuses['Pending'] || 0 },
-            { name: 'Confirmed', value: statuses['Confirmed'] || 0 },
+            { name: 'Ready', value: statuses['Ready'] || 0 },
             { name: 'Preparing', value: statuses['Preparing'] || 0 },
             { name: 'Delivered', value: statuses['Delivered'] || 0 },
         ])

@@ -126,8 +126,9 @@ public class OrderService {
 
         List<OrderStatus> activeStatuses = Arrays.asList(
                 OrderStatus.PENDING,
+                OrderStatus.PREPARING,
                 OrderStatus.READY,
-                OrderStatus.PREPARING
+                OrderStatus.DELIVERED
         );
 
         List<Order> orders = mealType != null
@@ -156,12 +157,16 @@ public class OrderService {
     }
 
     private boolean isValidStatusTransition(OrderStatus current, OrderStatus next) {
-        return switch (current) {
-            case PENDING   -> next == OrderStatus.READY || next == OrderStatus.CANCELLED;
-            case READY     -> next == OrderStatus.PREPARING || next == OrderStatus.CANCELLED;
-            case PREPARING -> next == OrderStatus.DELIVERED;
-            case DELIVERED, CANCELLED -> false;
-        };
+        if (current == OrderStatus.PENDING) {
+            return next == OrderStatus.PREPARING || next == OrderStatus.CANCELLED;
+        }
+        if (current == OrderStatus.PREPARING) {
+            return next == OrderStatus.READY || next == OrderStatus.CANCELLED;
+        }
+        if (current == OrderStatus.READY) {
+            return next == OrderStatus.DELIVERED;
+        }
+        return false;
     }
 
     public List<OrderDTO> getOrdersWithSpecialRequests(LocalDate date) {
@@ -216,7 +221,7 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
 
         if (order.getStatus() == OrderStatus.PREPARING ||
-                order.getStatus() == OrderStatus.DELIVERED) {
+                order.getStatus() == OrderStatus.READY) {
             throw new BusinessException(
                     "Cannot cancel order that is already being prepared or delivered");
         }

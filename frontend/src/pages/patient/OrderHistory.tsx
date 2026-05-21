@@ -19,7 +19,7 @@ export interface Order {
     orderDate: string           // ISO date "YYYY-MM-DD" (backend field name)
     quantity: number
     specialRequest?: string | null
-    status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'  //  Use CONFIRMED not READY
+    status: 'PENDING' | 'READY' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
     orderedAt: string           // ISO datetime (backend: createdAt)
     updatedAt?: string
 }
@@ -82,7 +82,7 @@ export default function OrderHistory() {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'PENDING': return <FiClock className="status-icon" />
-            case 'CONFIRMED': return <FiClock className="status-icon" />  // Use CONFIRMED
+            case 'READY': return <FiClock className="status-icon" />
             case 'PREPARING': return <FiPackage className="status-icon" />
             case 'DELIVERED': return <FiCheckCircle className="status-icon" />
             case 'CANCELLED': return <FiXCircle className="status-icon" />

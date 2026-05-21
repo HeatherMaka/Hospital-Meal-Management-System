@@ -192,14 +192,14 @@ export default function KitchenAnalytics() {
         const statuses: Record<string, number> = {}
         analytics.forEach(item => {
             statuses['PENDING'] = (statuses['PENDING'] || 0) + item.pendingOrders
-            statuses['CONFIRMED'] = (statuses['CONFIRMED'] || 0) + item.confirmedOrders
+            statuses['READY'] = (statuses['READY'] || 0) + item.confirmedOrders
             statuses['PREPARING'] = (statuses['PREPARING'] || 0) + item.preparingOrders
             statuses['DELIVERED'] = (statuses['DELIVERED'] || 0) + item.deliveredOrders
             statuses['CANCELLED'] = (statuses['CANCELLED'] || 0) + item.cancelledOrders
         })
         setStatusData([
             { name: 'Pending', value: statuses['PENDING'] || 0 },
-            { name: 'Confirmed', value: statuses['CONFIRMED'] || 0 },
+            { name: 'Ready', value: statuses['READY'] || 0 },
             { name: 'Preparing', value: statuses['PREPARING'] || 0 },
             { name: 'Delivered', value: statuses['DELIVERED'] || 0 },
         ])

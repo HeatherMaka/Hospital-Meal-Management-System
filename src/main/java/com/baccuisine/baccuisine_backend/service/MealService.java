@@ -183,13 +183,23 @@ public class MealService {
     // ============ Orderable Check ============
 
     /**
-     * A meal is orderable if it is active AND the current time is before its deadline.
+     * A meal is orderable if it is active.
+     * For today's meals: the current time must be before the deadline.
+     * For future-dated meals (e.g. tomorrow): always orderable — the deadline
+     * applies on the day itself, not the night before.
      * If no deadline is set, it is always orderable while active.
      */
     public boolean isMealOrderable(Meal meal) {
         if (!meal.isActive()) return false;
         LocalTime deadline = meal.getOrderDeadline();
-        boolean before = deadline == null || deadline.isAfter(LocalTime.now());
+        if (deadline == null) return true;
+
+        LocalDate mealDate = meal.getMealDate();
+        LocalDate today = LocalDate.now();
+
+        if (mealDate != null && mealDate.isAfter(today)) return true;
+
+        boolean before = deadline.isAfter(LocalTime.now());
         log.debug("Meal '{}' orderable={} (deadline={}, now={})",
                 meal.getName(), before, deadline, LocalTime.now());
         return before;

@@ -3,7 +3,11 @@ import { Order, OrderRequest, OrderStats } from '../types/order'
 
 export const orderService = {
     async placeOrder(order: OrderRequest): Promise<Order> {
-        const response = await api.post<Order>('/patient/orders', order)
+        const response = await api.post<Order>('/patient/orders', {
+            mealId: order.mealId,
+            quantity: order.quantity ?? 1,
+            specialRequest: order.specialRequest,
+        })
         return response.data
     },
 

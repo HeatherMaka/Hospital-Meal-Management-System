@@ -83,3 +83,132 @@
     font-size: 2rem;
     font-weight: 700;
 }
+
+/* Top Meals Section */
+.top-meals-section {
+    background: white;
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-top: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.top-meals-section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.period-label {
+    font-size: 0.85rem;
+    color: #6B7280;
+    font-weight: 500;
+}
+
+.top-meals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.top-meal-item {
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 100px;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #F9FAFB;
+    border-radius: 0.5rem;
+}
+
+.meal-rank {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #3B82F6;
+}
+
+.meal-name {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.9rem;
+}
+
+.meal-orders {
+    color: #6B7280;
+    font-size: 0.85rem;
+    text-align: right;
+    font-weight: 500;
+}
+
+.meal-bar {
+    height: 6px;
+    background: #E5E7EB;
+    border-radius: 9999px;
+    overflow: hidden;
+}
+
+.meal-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3B82F6 0%, #1E3A8A 100%);
+    border-radius: 9999px;
+    transition: width 0.5s ease;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #6B7280;
+}
+
+.loading-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.top-meal-item.skeleton {
+    display: grid;
+    grid-template-columns: 40px 1fr 80px 100px;
+    gap: 0.75rem;
+    padding: 0.75rem;
+}
+
+.skeleton-rank,
+.skeleton-name,
+.skeleton-orders,
+.skeleton-bar {
+    height: 1rem;
+    background: linear-gradient(90deg, #E5E7EB 25%, #F3F4F6 50%, #E5E7EB 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 0.25rem;
+}
+
+.skeleton-rank { width: 30px; }
+.skeleton-name { width: 100%; }
+.skeleton-orders { width: 60px; }
+.skeleton-bar { width: 100%; }
+
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@media (max-width: 768px) {
+    .top-meal-item {
+        grid-template-columns: 1fr;
+        gap: 0.4rem;
+    }
+
+    .meal-orders {
+        text-align: left;
+    }
+}

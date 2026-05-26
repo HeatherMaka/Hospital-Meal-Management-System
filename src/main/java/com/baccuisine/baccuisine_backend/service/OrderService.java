@@ -38,51 +38,49 @@ public class OrderService {
 
     /**
      * Place an order using mealId directly from the meals table.
+     * If mealId is null, creates a standalone special request order.
      */
     @Transactional
     public OrderDTO placeOrder(Patient patient, OrderRequest request) {
         log.debug("Placing order for patient {} - mealId: {}",
                 patient.getId(), request.getMealId());
 
-        // STEP 1: Fetch the Meal directly by ID
-        Meal meal = mealRepository.findById(request.getMealId())
-                .orElseThrow(() -> {
-                    log.warn("Meal not found with id: {}", request.getMealId());
-                    return new ResourceNotFoundException(
-                            "Meal #" + request.getMealId() + " not found");
-                });
+        Meal meal = null;
 
-        // STEP 2: Validate meal is active
-        if (!meal.isActive()) {
-            throw new BusinessException("This meal is no longer available for ordering");
+        if (request.getMealId() != null) {
+            // STEP 1: Fetch the Meal directly by ID
+            meal = mealRepository.findById(request.getMealId())
+                    .orElseThrow(() -> {
+                        log.warn("Meal not found with id: {}", request.getMealId());
+                        return new ResourceNotFoundException(
+                                "Meal #" + request.getMealId() + " not found");
+                    });
+
+            // STEP 2: Validate meal is active
+            if (!meal.isActive()) {
+                throw new BusinessException("This meal is no longer available for ordering");
+            }
+
+            // STEP 3: Prevent duplicate orders per meal type per day
+            boolean alreadyOrdered = orderRepository.existsByPatientIdAndMealDateAndMealType(
+                    patient.getId(),
+                    meal.getMealDate(),
+                    meal.getMealType()
+            );
+
+            if (alreadyOrdered) {
+                throw new BusinessException(
+                        "You have already ordered a " +
+                                meal.getMealType().name().toLowerCase().replace("_", " ") +
+                                " for " + meal.getMealDate());
+            }
         }
 
-        // STEP 3:- Validate ordering is still within the time window
-        // This was causing "Ordering is closed for CEREAL. Cutoff is 1 hour before serving time"
-        // Commented out for testing purposes
-        /*
-        if (!timeValidator.isOrderable(meal.getMealDate(), meal.getMealType())) {
-            throw new BusinessException(
-                    "Ordering is closed for " + meal.getMealType() +
-                            ". Cutoff is 1 hour before serving time.");
-        }
-        */
-
-        // STEP 4: Prevent duplicate orders per meal type per day
-        boolean alreadyOrdered = orderRepository.existsByPatientIdAndMealDateAndMealType(
-                patient.getId(),
-                meal.getMealDate(),
-                meal.getMealType()
-        );
-
-        if (alreadyOrdered) {
-            throw new BusinessException(
-                    "You have already ordered a " +
-                            meal.getMealType().name().toLowerCase().replace("_", " ") +
-                            " for " + meal.getMealDate());
+        if (request.getMealId() == null && !request.hasSpecialRequest()) {
+            throw new BusinessException("Please provide a special request or select a meal");
         }
 
-        // STEP 5: Save the order
+        // STEP 4: Save the order
         Order order = Order.builder()
                 .patient(patient)
                 .meal(meal)
@@ -93,8 +91,14 @@ public class OrderService {
                 .build();
 
         Order savedOrder = orderRepository.save(order);
-        log.info("Order placed: orderId={}, patientId={}, meal={}, mealId={}",
-                savedOrder.getId(), patient.getId(), meal.getName(), meal.getId());
+
+        if (meal != null) {
+            log.info("Order placed: orderId={}, patientId={}, meal={}, mealId={}",
+                    savedOrder.getId(), patient.getId(), meal.getName(), meal.getId());
+        } else {
+            log.info("Standalone special request placed: orderId={}, patientId={}",
+                    savedOrder.getId(), patient.getId());
+        }
 
         return mapToDTO(savedOrder);
     }
@@ -258,7 +262,7 @@ public class OrderService {
                 .wardNumber(patient != null ? patient.getWardNumber() : null)
                 .bedNumber(patient != null ? patient.getBedNumber() : null)
                 .mealId(meal != null ? meal.getId() : null)
-                .mealName(meal != null ? meal.getName() : "Unknown Meal")
+                .mealName(meal != null ? meal.getName() : "Special Request")
                 .mealType(meal != null ? meal.getMealType() : null)
                 .orderDate(meal != null ? meal.getMealDate() : null)
                 .quantity(order.getQuantity() != null ? order.getQuantity() : 1)

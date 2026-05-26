@@ -16,9 +16,9 @@ export interface Order {
     patientName: string
     wardNumber: string
     bedNumber: string
-    mealId: number
-    mealName: string
-    mealType: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
+    mealId?: number
+    mealName?: string
+    mealType?: 'CEREAL' | 'BREAKFAST' | 'LUNCH' | 'LUNCH_DESSERT' | 'THREE_PM_TEAS' | 'DINNER' | 'DINNER_DESSERT'
     orderDate: string           // ISO date "YYYY-MM-DD" (backend field name)
     quantity: number
     specialRequest?: string | null

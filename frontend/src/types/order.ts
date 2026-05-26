@@ -17,7 +17,7 @@ export interface Order {
 }
 
 export interface OrderRequest {
-    mealId: number
+    mealId?: number
     quantity?: number
     specialRequest?: string
 }

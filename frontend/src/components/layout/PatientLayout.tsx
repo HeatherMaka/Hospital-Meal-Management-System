@@ -138,16 +138,6 @@ export default function PatientLayout() {
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                     border: '2px dashed #22c55e' // Debug border for Outlet
                 }}>
-                    <div style={{
-                        marginBottom: '1rem',
-                        padding: '0.75rem',
-                        backgroundColor: '#dcfce7',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.875rem',
-                        color: '#166534'
-                    }}>
-                         Outlet area - child route renders here
-                    </div>
                     {/*  This renders PatientMenu, OrderHistory, or PatientProfile */}
                     <Outlet />
                 </div>

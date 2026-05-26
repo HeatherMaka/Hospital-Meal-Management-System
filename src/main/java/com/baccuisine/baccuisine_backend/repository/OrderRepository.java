@@ -34,7 +34,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             SELECT o FROM Order o
             LEFT JOIN FETCH o.meal m
             WHERE o.patient.id = :patientId
-              AND m.mealDate = :date
+              AND (m.mealDate = :date OR o.meal IS NULL)
             ORDER BY o.createdAt DESC
             """)
     List<Order> findByPatientIdAndOrderDate(
@@ -94,9 +94,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             SELECT o FROM Order o
             LEFT JOIN FETCH o.patient
             LEFT JOIN FETCH o.meal m
-            WHERE m.mealDate = :date
+            WHERE (m.mealDate = :date OR o.meal IS NULL)
               AND o.status IN :statuses
-            ORDER BY m.mealType ASC, o.createdAt ASC
+            ORDER BY CASE WHEN o.meal IS NULL THEN 1 ELSE 0 END, m.mealType ASC, o.createdAt ASC
             """)
     List<Order> findOrdersForKitchenByDate(
             @Param("date") LocalDate date,
@@ -110,7 +110,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             SELECT o FROM Order o
             LEFT JOIN FETCH o.patient
             LEFT JOIN FETCH o.meal m
-            WHERE m.mealDate = :date
+            WHERE (m.mealDate = :date OR o.meal IS NULL)
               AND o.specialRequest IS NOT NULL
               AND o.specialRequest <> ''
             """)

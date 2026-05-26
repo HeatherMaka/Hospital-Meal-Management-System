@@ -36,9 +36,8 @@ export interface DailyMenuItem {
     imageUrl?: string
 }
 
-//  Backend expects 'mealId', not 'dailyMenuId'
 export interface OrderRequest {
-    mealId: number  // ← Changed from dailyMenuId to mealId
+    mealId?: number
     quantity?: number
     specialRequest?: string
 }
@@ -49,10 +48,10 @@ export interface OrderDTO {
     patientName: string
     wardNumber: string
     bedNumber: string
-    mealId: number
-    mealName: string
-    mealType: MealType
-    orderDate: string
+    mealId?: number
+    mealName?: string
+    mealType?: MealType
+    orderDate?: string
     quantity: number
     specialRequest?: string
     status: 'PENDING' | 'READY' | 'PREPARING' | 'DELIVERED' | 'CANCELLED'
@@ -166,8 +165,9 @@ export default function PatientMenu() {
 
     // ── Submit order ────────────────────────────────────────────────────────────
     const handleSubmitOrder = async (): Promise<void> => {
-        if (selectedMeals.length === 0) {
-            showNotification('Please select at least one meal', 'error')
+        const hasSpecialOnly = selectedMeals.length === 0 && specialRequest.trim()
+        if (selectedMeals.length === 0 && !hasSpecialOnly) {
+            showNotification('Please select at least one meal or add a special request', 'error')
             return
         }
 
@@ -175,26 +175,41 @@ export default function PatientMenu() {
         let successCount = 0
         let lastError = ''
 
-        for (const mealId of selectedMeals) {
+        if (hasSpecialOnly) {
             try {
                 const order: OrderRequest = {
-                    mealId: mealId,
-                    quantity: 1,
-                    specialRequest: specialRequest.trim() || undefined,
+                    specialRequest: specialRequest.trim(),
                 }
                 await api.post<OrderDTO>('/patient/orders', order)
                 successCount++
             } catch (err: any) {
-                const msg = err.response?.data?.message || err.message || 'Failed to submit order'
+                const msg = err.response?.data?.message || err.message || 'Failed to submit special request'
                 lastError = msg
-                console.error(`Error submitting meal #${mealId}:`, msg)
+                console.error('Error submitting special request:', msg)
+            }
+        } else {
+            for (const mealId of selectedMeals) {
+                try {
+                    const order: OrderRequest = {
+                        mealId: mealId,
+                        quantity: 1,
+                        specialRequest: specialRequest.trim() || undefined,
+                    }
+                    await api.post<OrderDTO>('/patient/orders', order)
+                    successCount++
+                } catch (err: any) {
+                    const msg = err.response?.data?.message || err.message || 'Failed to submit order'
+                    lastError = msg
+                    console.error(`Error submitting meal #${mealId}:`, msg)
+                }
             }
         }
 
         if (successCount > 0) {
+            const label = hasSpecialOnly ? 'Special request' : `${successCount} meal(s)`
             showNotification(
-                `${successCount} meal(s) ordered successfully.` +
-                (successCount < selectedMeals.length ? ` ${selectedMeals.length - successCount} failed.` : ''),
+                `${label} submitted successfully.` +
+                (!hasSpecialOnly && successCount < selectedMeals.length ? ` ${selectedMeals.length - successCount} failed.` : ''),
                 lastError ? 'error' : 'success'
             )
             setSelectedMeals([])
@@ -342,16 +357,24 @@ export default function PatientMenu() {
                     ) : (
                         <div className="orders-list">
                             {orderHistory.map((order) => (
-                                <div key={order.id} className="order-card">
+                                <div key={order.id} className={`order-card ${!order.mealId ? 'special-request' : ''}`}>
                                     <div className="order-header">
-                                        <span className="order-meal-type">
-                                            {getMealTypeIcon(order.mealType)} {getMealTypeLabel(order.mealType)}
-                                        </span>
+                                        {order.mealType ? (
+                                            <span className="order-meal-type">
+                                                {getMealTypeIcon(order.mealType)} {getMealTypeLabel(order.mealType)}
+                                            </span>
+                                        ) : (
+                                            <span className="order-meal-type">Special Request</span>
+                                        )}
                                         <span className={`badge ${getOrderStatusClass(order.status)}`}>
                                             {order.status}
                                         </span>
                                     </div>
-                                    <h3>{order.mealName}</h3>
+                                    {order.mealName ? (
+                                        <h3>{order.mealName}</h3>
+                                    ) : (
+                                        <h3>Special Request</h3>
+                                    )}
                                     {order.specialRequest && (
                                         <p className="special-request-display">
                                             <strong>Note:</strong> {order.specialRequest}
@@ -476,7 +499,7 @@ export default function PatientMenu() {
                     <div className="special-request-section">
                         <h3>Special Requests</h3>
                         <textarea
-                            placeholder="Any allergies, preferences, or special instructions? (Optional)"
+                            placeholder="Any allergies, preferences, or special instructions? You can submit a special request without selecting a meal."
                             value={specialRequest}
                             onChange={(e) => setSpecialRequest(e.target.value)}
                             rows={3}
@@ -486,27 +509,33 @@ export default function PatientMenu() {
                     </div>
 
                     {/* Order Summary */}
-                    {selectedMeals.length > 0 && (
+                    {(selectedMeals.length > 0 || specialRequest.trim()) && (
                         <div className="order-summary">
                             <div className="summary-header">
                                 <h3>Order Summary</h3>
-                                <span className="item-count">{selectedMeals.length} item(s)</span>
+                                <span className="item-count">
+                                    {selectedMeals.length > 0 ? `${selectedMeals.length} meal(s)` : ''}
+                                    {selectedMeals.length > 0 && specialRequest.trim() ? ' + ' : ''}
+                                    {specialRequest.trim() ? 'Special Request' : ''}
+                                </span>
                             </div>
-                            <ul className="summary-items">
-                                {selectedMeals.map(mealId => {
-                                    const meal = menuItems.find(m => m.id === mealId)
-                                    if (!meal) return null
-                                    return (
-                                        <li key={mealId}>
-                                            <span>{getMealTypeIcon(meal.mealType)}</span>
-                                            <span>{meal.mealName}</span>
-                                        </li>
-                                    )
-                                })}
-                            </ul>
-                            {specialRequest && (
-                                <p className="summary-note">
-                                    <strong>Note:</strong> {specialRequest}
+                            {selectedMeals.length > 0 && (
+                                <ul className="summary-items">
+                                    {selectedMeals.map(mealId => {
+                                        const meal = menuItems.find(m => m.id === mealId)
+                                        if (!meal) return null
+                                        return (
+                                            <li key={mealId}>
+                                                <span>{getMealTypeIcon(meal.mealType)}</span>
+                                                <span>{meal.mealName}</span>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            )}
+                            {specialRequest.trim() && (
+                                <p className="summary-note standalone">
+                                    <strong>Special Request:</strong> {specialRequest.trim()}
                                 </p>
                             )}
                         </div>
@@ -517,7 +546,7 @@ export default function PatientMenu() {
                         <button
                             className="btn-submit"
                             onClick={handleSubmitOrder}
-                            disabled={isSubmitting || selectedMeals.length === 0}
+                            disabled={isSubmitting || (selectedMeals.length === 0 && !specialRequest.trim())}
                             type="button"
                         >
                             {isSubmitting ? (
@@ -525,18 +554,22 @@ export default function PatientMenu() {
                                     <span className="spinner-small"></span>
                                     Submitting...
                                 </>
-                            ) : (
+                            ) : selectedMeals.length > 0 && specialRequest.trim() ? (
+                                `Submit Order (${selectedMeals.length} meal(s) + Special Request)`
+                            ) : selectedMeals.length > 0 ? (
                                 `Submit Order (${selectedMeals.length} item${selectedMeals.length !== 1 ? 's' : ''})`
+                            ) : (
+                                'Submit Special Request'
                             )}
                         </button>
-                        {selectedMeals.length > 0 && (
+                        {(selectedMeals.length > 0 || specialRequest.trim()) && (
                             <button
                                 className="btn-clear"
-                                onClick={() => setSelectedMeals([])}
+                                onClick={() => { setSelectedMeals([]); setSpecialRequest('') }}
                                 disabled={isSubmitting}
                                 type="button"
                             >
-                                Clear Selection
+                                Clear All
                             </button>
                         )}
                     </div>

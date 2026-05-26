@@ -20,6 +20,7 @@ export interface Meal {
     orderable?: boolean         // Jackson: isOrderable() → "orderable"
     mealDate?: string
     orderDeadline?: string      // "HH:mm:ss"
+    dailyMenuId?: number | null
     createdAt?: string
     updatedAt?: string
 }
@@ -117,7 +118,9 @@ export default function MenuManagement() {
     const fetchMeals = async () => {
         try {
             const response = await api.get<Meal[]>('/meals')
-            setMeals(response.data || [])
+            const data = response.data || []
+            console.debug('Meals API response:', data.map(m => ({ id: m.id, name: m.name, mealType: m.mealType })))
+            setMeals(data)
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch meals'
             showNotification(errorMessage, 'error')
@@ -389,6 +392,8 @@ export default function MenuManagement() {
         return menuForType?.items || []
     }
 
+    const catalogMeals = meals.filter(m => m.dailyMenuId == null)
+
     // ── Render ───────────────────────────────────────────────────────────────────
 
     return (
@@ -469,9 +474,6 @@ export default function MenuManagement() {
                                         <h3>{meal.name}</h3>
                                         <p>{meal.description}</p>
                                         <div className="menu-item-meta">
-                                            <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
-                                                {MEAL_TYPE_LABELS[meal.mealType]}
-                                            </span>
                                             {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
                                                 <span className="diet-badges">
                                                     {meal.compatibleDiets.slice(0, 3).map(diet => (
@@ -535,60 +537,81 @@ export default function MenuManagement() {
                                 <FiPlus /> Create First Meal
                             </button>
                         </div>
+                    ) : catalogMeals.length === 0 ? (
+                        <div className="no-data">
+                            <p>No meals in catalog yet</p>
+                            <button className="btn-primary" onClick={handleCreateMeal} type="button">
+                                <FiPlus /> Create First Meal
+                            </button>
+                        </div>
                     ) : (
-                        <div className="meals-grid">
-                            {meals.map((meal) => (
-                                <div key={meal.id} className={`meal-card ${!isActive(meal) ? 'inactive' : ''}`}>
-                                    <div className="meal-card-info">
-                                        <h3>{meal.name}</h3>
-                                        <p>{meal.description}</p>
-                                        <div className="meal-card-meta">
-                                            <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
-                                                {MEAL_TYPE_LABELS[meal.mealType]}
-                                            </span>
-                                            {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
-                                                <span className="diet-badges">
-                                                    {meal.compatibleDiets.slice(0, 2).map(diet => (
-                                                        <span key={diet} className="diet-badge small">
-                                                            {diet.replace(/_/g, ' ')}
-                                                        </span>
-                                                    ))}
-                                                </span>
-                                            )}
+                        <div className="catalog-groups">
+                            {MEAL_TYPES.map(type => {
+                                const typeMeals = catalogMeals.filter(m => m.mealType === type)
+                                if (typeMeals.length === 0) return null
+                                return (
+                                    <div key={type} className="catalog-group">
+                                        <h3 className="catalog-group-title">
+                                            {MEAL_TYPE_LABELS[type]}
+                                            <span className="catalog-group-count">{typeMeals.length}</span>
+                                        </h3>
+                                        <div className="meals-grid">
+                                            {typeMeals.map((meal) => (
+                                                <div key={meal.id} className={`meal-card ${!isActive(meal) ? 'inactive' : ''}`}>
+                                                    <div className="meal-card-info">
+                                                        <h3>{meal.name}</h3>
+                                                        <p>{meal.description}</p>
+                                                        <div className="meal-card-meta">
+                                                            <span className={`meal-type-badge ${meal.mealType.toLowerCase()}`}>
+                                                                {MEAL_TYPE_LABELS[meal.mealType]}
+                                                            </span>
+                                                            {meal.compatibleDiets && meal.compatibleDiets.length > 0 && (
+                                                                <span className="diet-badges">
+                                                                    {meal.compatibleDiets.slice(0, 2).map(diet => (
+                                                                        <span key={diet} className="diet-badge small">
+                                                                            {diet.replace(/_/g, ' ')}
+                                                                        </span>
+                                                                    ))}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="meal-card-actions">
+                                                        <button
+                                                            className="btn-icon"
+                                                            title={isActive(meal) ? 'Edit' : 'View'}
+                                                            onClick={() => isActive(meal) && handleEditMeal(meal)}
+                                                            disabled={!isActive(meal)}
+                                                            type="button"
+                                                        >
+                                                            <FiEdit />
+                                                        </button>
+                                                        {isActive(meal) ? (
+                                                            <button
+                                                                className="btn-icon danger"
+                                                                title="Deactivate"
+                                                                onClick={() => handleDeactivateMeal(meal.id)}
+                                                                type="button"
+                                                            >
+                                                                <FiTrash2 />
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                className="btn-icon success"
+                                                                title="Reactivate"
+                                                                onClick={() => handleReactivateMeal(meal.id)}
+                                                                type="button"
+                                                            >
+                                                                <FiSave />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                    <div className="meal-card-actions">
-                                        <button
-                                            className="btn-icon"
-                                            title={isActive(meal) ? 'Edit' : 'View'}
-                                            onClick={() => isActive(meal) && handleEditMeal(meal)}
-                                            disabled={!isActive(meal)}
-                                            type="button"
-                                        >
-                                            <FiEdit />
-                                        </button>
-                                        {isActive(meal) ? (
-                                            <button
-                                                className="btn-icon danger"
-                                                title="Deactivate"
-                                                onClick={() => handleDeactivateMeal(meal.id)}
-                                                type="button"
-                                            >
-                                                <FiTrash2 />
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="btn-icon success"
-                                                title="Reactivate"
-                                                onClick={() => handleReactivateMeal(meal.id)}
-                                                type="button"
-                                            >
-                                                <FiSave />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     )}
                 </div>
@@ -729,7 +752,7 @@ export default function MenuManagement() {
                             </select>
                         </div>
 
-                        {meals.filter(m => isActive(m)).length === 0 ? (
+                        {catalogMeals.filter(m => isActive(m)).length === 0 ? (
                             <div className="no-data">
                                 <p>No active meals available</p>
                                 <button
@@ -742,7 +765,7 @@ export default function MenuManagement() {
                             </div>
                         ) : (
                             <div className="meal-selection-grid">
-                                {meals.filter(m => isActive(m)).map((meal) => (
+                                {catalogMeals.filter(m => isActive(m)).map((meal) => (
                                     <div
                                         key={meal.id}
                                         className="meal-selection-card"

@@ -43,6 +43,20 @@ interface TrendData {
     orders: number
 }
 
+interface TopMeal {
+    rank: number
+    name: string
+    orders: number
+}
+
+// Backend MealStatsDTO
+interface MealStatsDTO {
+    mealName: string
+    mealType: string
+    orderCount: number
+    popularityPercentage: number
+}
+
 interface DashboardStats {
     totalOrders: number
     activePatients: number      // newPatientsToday
@@ -73,6 +87,7 @@ export default function Analytics() {
     const [mealTypeData, setMealTypeData] = useState<MealTypeData[]>([])
     const [statusData, setStatusData] = useState<StatusData[]>([])
     const [weeklyData, setWeeklyData] = useState<TrendData[]>([])
+    const [topMeals, setTopMeals] = useState<TopMeal[]>([])
     const [stats, setStats] = useState<DashboardStats>({
         totalOrders: 0,
         activePatients: 0,
@@ -136,6 +151,27 @@ export default function Analytics() {
 
             //  setRawAnalytics(allAnalytics) - state was never read
             parseAnalyticsData(allAnalytics, dates)
+
+            // Fetch top 5 most ordered meals
+            try {
+                const startDate = dates[0]
+                const endDate = dates[dates.length - 1]
+                const mealsResponse = await api.get<MealStatsDTO[]>('/admin/analytics/meals', {
+                    params: { startDate, endDate }
+                })
+                if (mealsResponse.data) {
+                    const top5 = mealsResponse.data.slice(0, 5).map((meal, index) => ({
+                        rank: index + 1,
+                        name: meal.mealName,
+                        orders: meal.orderCount,
+                    }))
+                    setTopMeals(top5)
+                }
+            } catch (err) {
+                console.warn('Failed to fetch top meals:', err)
+                setTopMeals([])
+            }
+
             setLastUpdated(new Date())
 
         } catch (err: any) {
@@ -239,6 +275,9 @@ export default function Analytics() {
             [],
             ['Status', 'Count'],
             ...statusData.map(s => [s.name, s.value]),
+            [],
+            ['Top Meals', 'Orders'],
+            ...topMeals.map(m => [m.name, m.orders]),
         ].map(row => row.join(',')).join('\n')
 
         const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -256,7 +295,8 @@ export default function Analytics() {
         mealType: mealTypeData.filter(m => m.orders > 0),
         status: statusData.filter(s => s.value > 0),
         weekly: weeklyData,
-    }), [mealTypeData, statusData, weeklyData])
+        topMeals: topMeals,
+    }), [mealTypeData, statusData, weeklyData, topMeals])
 
     return (
         <div className="analytics-page">
@@ -417,6 +457,55 @@ export default function Analytics() {
                         </ResponsiveContainer>
                     )}
                 </div>
+            </div>
+
+            {/* Top 5 Most Ordered Meals */}
+            <div className="top-meals-section">
+                <div className="section-header">
+                    <h2>Top 5 Most Ordered Meals</h2>
+                    <span className="period-label">
+            {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : 'This Month'}
+          </span>
+                </div>
+
+                {isLoading ? (
+                    <div className="loading-list">
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="top-meal-item skeleton">
+                                <div className="skeleton-rank"></div>
+                                <div className="skeleton-name"></div>
+                                <div className="skeleton-orders"></div>
+                                <div className="skeleton-bar"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : topMeals.length === 0 ? (
+                    <div className="no-data">
+                        <p>No top meals data available for this period.</p>
+                    </div>
+                ) : (
+                    <div className="top-meals-list">
+                        {topMeals.map((meal) => {
+                            const maxOrders = topMeals[0]?.orders || 1
+                            return (
+                                <div key={meal.rank} className="top-meal-item">
+                                    <span className="meal-rank">#{meal.rank}</span>
+                                    <span className="meal-name">{meal.name}</span>
+                                    <span className="meal-orders">{meal.orders.toLocaleString()} orders</span>
+                                    <div className="meal-bar">
+                                        <div
+                                            className="meal-bar-fill"
+                                            style={{
+                                                width: `${(meal.orders / maxOrders) * 100}%`,
+                                                background: COLORS[(meal.rank - 1) % COLORS.length]
+                                            }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Data Source Note */}

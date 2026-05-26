@@ -15,7 +15,7 @@ export interface AnalyticsDTO {
     date: string
     totalOrders: number
     pendingOrders: number
-    readyOrders: number
+    confirmedOrders: number
     preparingOrders: number
     deliveredOrders: number
     cancelledOrders: number
@@ -64,7 +64,7 @@ export default function KitchenDashboard() {
             // Map backend AnalyticsDTO to frontend DashboardStats
             setStats({
                 pendingOrders: analytics.pendingOrders ?? 0,
-                readyOrders: analytics.readyOrders ?? 0,
+                readyOrders: analytics.confirmedOrders ?? 0,
                 preparingOrders: analytics.preparingOrders ?? 0,
                 deliveredOrders: analytics.deliveredOrders ?? 0,
                 specialRequests: analytics.specialRequestCount ?? 0,

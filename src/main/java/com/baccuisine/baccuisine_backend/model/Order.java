@@ -29,10 +29,10 @@ public class Order {
     private Patient patient;
 
     /**
-     * Direct reference to Meal — no longer goes through DailyMenu
+     * Direct reference to Meal — null for standalone special requests
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "meal_id", nullable = false)
+    @JoinColumn(name = "meal_id")
     private Meal meal;
 
     private Integer quantity;

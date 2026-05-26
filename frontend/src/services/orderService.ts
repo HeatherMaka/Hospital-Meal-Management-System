@@ -11,6 +11,13 @@ export const orderService = {
         return response.data
     },
 
+    async placeSpecialRequest(specialRequest: string): Promise<Order> {
+        const response = await api.post<Order>('/patient/orders', {
+            specialRequest,
+        })
+        return response.data
+    },
+
     async getPatientOrders(date?: string): Promise<Order[]> {
         const url = date
             ? `/patient/orders?date=${date}`

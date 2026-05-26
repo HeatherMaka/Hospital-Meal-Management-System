@@ -16,9 +16,9 @@ import lombok.NoArgsConstructor;
 public class OrderRequest {
 
     /**
-     * ID of the Meal being ordered (from the meals table)
+     * ID of the Meal being ordered (from the meals table).
+     * Null for standalone special requests.
      */
-    @NotNull(message = "Meal ID is required")
     private Long mealId;
 
     /**

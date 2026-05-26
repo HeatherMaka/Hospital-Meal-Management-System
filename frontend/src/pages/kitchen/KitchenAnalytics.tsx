@@ -50,6 +50,14 @@ interface TopMeal {
     orders: number
 }
 
+// Backend MealStatsDTO
+interface MealStatsDTO {
+    mealName: string
+    mealType: string
+    orderCount: number
+    popularityPercentage: number
+}
+
 interface DashboardStats {
     totalOrders: number
     avgPrepTime: string
@@ -149,6 +157,27 @@ export default function KitchenAnalytics() {
 
             // setRawAnalytics(allAnalytics) - state was never read
             parseAnalyticsData(allAnalytics) // dates parameter (was unused)
+
+            // Fetch top 5 most ordered meals
+            try {
+                const startDate = dates[0]
+                const endDate = dates[dates.length - 1]
+                const mealsResponse = await api.get<MealStatsDTO[]>('/staff/analytics/meals', {
+                    params: { startDate, endDate }
+                })
+                if (mealsResponse.data) {
+                    const top5 = mealsResponse.data.slice(0, 5).map((meal, index) => ({
+                        rank: index + 1,
+                        name: meal.mealName,
+                        orders: meal.orderCount,
+                    }))
+                    setTopMeals(top5)
+                }
+            } catch (err) {
+                console.warn('Failed to fetch top meals:', err)
+                setTopMeals([])
+            }
+
             setLastUpdated(new Date())
 
         } catch (err: any) {
@@ -203,9 +232,6 @@ export default function KitchenAnalytics() {
             { name: 'Preparing', value: statuses['PREPARING'] || 0 },
             { name: 'Delivered', value: statuses['DELIVERED'] || 0 },
         ])
-
-        // === Parse Top Meals ===
-        setTopMeals([])  // Placeholder until backend endpoint is added
 
         // === Parse Dashboard Stats ===
         const totalOrders = analytics.reduce((sum, item) => sum + item.totalOrders, 0)
@@ -462,7 +488,7 @@ export default function KitchenAnalytics() {
                 </div>
             </div>
 
-            {/* Top Meals Section - Placeholder until backend endpoint is added */}
+            {/* Top Meals Section */}
             <div className="top-meals-section">
                 <div className="section-header">
                     <h2>Top 5 Most Ordered Meals</h2>
@@ -484,11 +510,7 @@ export default function KitchenAnalytics() {
                     </div>
                 ) : topMeals.length === 0 ? (
                     <div className="no-data">
-                        <p>
-                            Top meals data will appear here.
-                            <br />
-                            <small>Backend endpoint <code>GET /api/staff/analytics/meals</code> needed.</small>
-                        </p>
+                        <p>No top meals data available for this period.</p>
                     </div>
                 ) : (
                     <div className="top-meals-list">
